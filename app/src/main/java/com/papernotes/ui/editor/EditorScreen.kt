@@ -1,0 +1,303 @@
+package com.papernotes.ui.editor
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.papernotes.domain.model.NoteType
+import com.papernotes.domain.model.cardSurface
+import com.papernotes.domain.model.earAccent
+import com.papernotes.ui.components.ConfettiBurst
+import com.papernotes.ui.components.DogEar
+import com.papernotes.ui.components.MoodPickerSheet
+import com.papernotes.ui.components.PaperBackground
+import com.papernotes.util.findActivity
+import com.papernotes.util.rememberPaperHaptics
+
+/**
+ * "Clean Writing Mode": Beim Öffnen blenden die System-Leisten sanft aus – es bleibt nur
+ * Papier, Text und Tastatur. Die Karte morpht via Shared-Element fließend in den Vollbild-Editor.
+ * Checklisten-Notizen bekommen statt des Fließtexts den [ChecklistEditor].
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun EditorScreen(
+    noteId: Long,
+    newType: NoteType,
+    session: Int,
+    sharedScope: SharedTransitionScope,
+    animatedScope: AnimatedVisibilityScope,
+    onBack: () -> Unit,
+    viewModel: EditorViewModel = hiltViewModel(),
+) {
+    val haptics = rememberPaperHaptics()
+    val view = LocalView.current
+
+    LaunchedEffect(session) { viewModel.load(noteId, newType, session) }
+    val note by viewModel.note.collectAsStateWithLifecycle()
+    val items by viewModel.items.collectAsStateWithLifecycle()
+    val celebration by viewModel.celebration.collectAsStateWithLifecycle()
+    val focusRequestId by viewModel.focusRequest.collectAsStateWithLifecycle()
+
+    var showMood by remember { mutableStateOf(false) }
+    var confettiKey by remember { mutableStateOf<Int?>(null) }
+    val bodyFocus = remember { FocusRequester() }
+    val ink = MaterialTheme.colorScheme.onBackground
+
+    // Konfetti, wenn der letzte offene Eintrag abgehakt wurde
+    LaunchedEffect(celebration) {
+        if (celebration > 0) {
+            haptics.confirm()
+            confettiKey = celebration
+        }
+    }
+
+    // System-Leisten ausblenden, beim Verlassen wiederherstellen.
+    DisposableEffect(Unit) {
+        val window = view.context.findActivity()?.window
+        val controller = window?.let { WindowInsetsControllerCompat(it, view) }
+        controller?.apply {
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+
+    // Bei neuer Text-Notiz direkt Tastatur/Fokus (Checkliste fokussiert ihre erste Zeile selbst).
+    LaunchedEffect(Unit) {
+        if (noteId <= 0L && newType == NoteType.TEXT) bodyFocus.requestFocus()
+    }
+
+    fun goBack() {
+        viewModel.flush()
+        onBack()
+    }
+
+    BackHandler { goBack() }
+
+    val insets = WindowInsets.safeDrawing.asPaddingValues()
+
+    PaperBackground(
+        baseColor = note.mood.cardSurface(),
+        dotGrid = true,
+    ) {
+        with(sharedScope) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .sharedBounds(
+                        rememberSharedContentState(key = "note-$noteId"),
+                        animatedVisibilityScope = animatedScope,
+                    )
+                    .padding(
+                        top = insets.calculateTopPadding() + 8.dp,
+                        bottom = 8.dp,
+                    )
+                    .imePadding(),
+            ) {
+                // Kopfzeile: Zurück + Eselsohr (Stimmung)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    IconButton(onClick = {
+                        haptics.tap()
+                        goBack()
+                    }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Zurück",
+                            tint = ink,
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        DogEar(
+                            folded = note.dogEarFolded,
+                            accent = note.mood.earAccent(),
+                            onToggle = {
+                                haptics.tick()
+                                viewModel.toggleDogEar()
+                            },
+                            onLongPress = { showMood = true },
+                        )
+                        // Sichtbarer Einstieg zu Stimmung / Anheften / Löschen
+                        IconButton(onClick = {
+                            haptics.tap()
+                            showMood = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = "Optionen",
+                                tint = ink,
+                            )
+                        }
+                    }
+                }
+
+                if (note.type == NoteType.CHECKLIST) {
+                    ChecklistEditor(
+                        items = items,
+                        focusRequestId = focusRequestId,
+                        accentColor = note.mood.earAccent(),
+                        onConsumeFocusRequest = viewModel::consumeFocusRequest,
+                        onToggle = viewModel::toggleItem,
+                        onTextChange = viewModel::setItemText,
+                        onAddAfter = viewModel::addItem,
+                        onRemove = viewModel::removeItem,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 24.dp),
+                        header = {
+                            TitleField(
+                                title = note.title,
+                                onTitleChange = viewModel::onTitleChange,
+                                onNext = {},
+                            )
+                        },
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp),
+                    ) {
+                        TitleField(
+                            title = note.title,
+                            onTitleChange = viewModel::onTitleChange,
+                            onNext = { bodyFocus.requestFocus() },
+                        )
+
+                        BasicTextField(
+                            value = note.body,
+                            onValueChange = viewModel::onBodyChange,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = ink),
+                            cursorBrush = SolidColor(ink),
+                            decorationBox = { inner ->
+                                if (note.body.isEmpty()) {
+                                    Text(
+                                        text = "Schreib los …",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.outline,
+                                    )
+                                }
+                                inner()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(bodyFocus)
+                                .padding(bottom = 48.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        // Konfetti-Overlay über dem ganzen Editor
+        confettiKey?.let { key ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                ConfettiBurst(trigger = key, onFinished = { confettiKey = null })
+            }
+        }
+
+        if (showMood) {
+            MoodPickerSheet(
+                selected = note.mood,
+                pinned = note.pinned,
+                onPick = {
+                    haptics.tick()
+                    viewModel.setMood(it)
+                    showMood = false
+                },
+                onTogglePin = {
+                    haptics.tap()
+                    viewModel.togglePin()
+                    showMood = false
+                },
+                onDelete = {
+                    showMood = false
+                    haptics.crumple()
+                    viewModel.moveToTrash { onBack() }
+                },
+                onDismiss = { showMood = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TitleField(
+    title: String,
+    onTitleChange: (String) -> Unit,
+    onNext: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    BasicTextField(
+        value = title,
+        onValueChange = onTitleChange,
+        textStyle = MaterialTheme.typography.headlineMedium.copy(color = ink),
+        cursorBrush = SolidColor(ink),
+        singleLine = true,
+        keyboardActions = KeyboardActions(onNext = { onNext() }),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        decorationBox = { inner ->
+            if (title.isEmpty()) {
+                Text(
+                    text = "Titel",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+            inner()
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 12.dp),
+    )
+}

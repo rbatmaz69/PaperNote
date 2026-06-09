@@ -1,0 +1,32 @@
+package com.papernotes.domain.model
+
+import com.papernotes.domain.ChecklistCodec
+import com.papernotes.domain.ChecklistItem
+
+/** Domänenmodell einer Notiz (UI-/Logik-Schicht, entkoppelt von Room). */
+data class Note(
+    val id: Long = 0L,
+    val title: String = "",
+    val body: String = "",
+    val type: NoteType = NoteType.TEXT,
+    val mood: MoodCategory = MoodCategory.PLAIN,
+    val dogEarFolded: Boolean = false,
+    val pinned: Boolean = false,
+    val archived: Boolean = false,
+    /** Zeitstempel der Knüll-Löschung; null = nicht im Papierkorb. */
+    val deletedAt: Long? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+) {
+    val isBlank: Boolean get() = title.isBlank() && body.isBlank()
+
+    val preview: String
+        get() = body.trim().ifBlank { "—" }
+
+    /** Checklisten-Einträge (leer für Text-Notizen). */
+    val checklist: List<ChecklistItem>
+        get() = if (type == NoteType.CHECKLIST) ChecklistCodec.parse(body) else emptyList()
+
+    fun withChecklist(items: List<ChecklistItem>): Note =
+        copy(body = ChecklistCodec.serialize(items))
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple folded-paper note glyph, drawn in espresso on the cream adaptive background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Paper sheet -->
+    <path
+        android:fillColor="#F4D58D"
+        android:pathData="M38,30h26l16,16v32a4,4 0 0 1 -4,4H38a4,4 0 0 1 -4,-4V34a4,4 0 0 1 4,-4z" />
+    <!-- Dog-ear fold (sage) -->
+    <path
+        android:fillColor="#B7CDB0"
+        android:pathData="M64,30l16,16H68a4,4 0 0 1 -4,-4z" />
+    <!-- Text lines -->
+    <path
+        android:strokeColor="#3A322E"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M44,56h26 M44,64h26 M44,72h16" />
+</vector>

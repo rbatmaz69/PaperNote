@@ -1,0 +1,409 @@
+package com.papernotes.ui.notes
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.papernotes.domain.model.Note
+import com.papernotes.domain.model.NoteType
+import com.papernotes.domain.model.cardSurface
+import com.papernotes.ui.components.AddFab
+import com.papernotes.ui.components.ArchiveDrawerSheet
+import com.papernotes.ui.components.CrumpleOverlay
+import com.papernotes.ui.components.CrumpleRequest
+import com.papernotes.ui.components.DrawerHandle
+import com.papernotes.ui.components.InkSearchBar
+import com.papernotes.ui.components.MoodFilterRow
+import com.papernotes.ui.components.MoodPickerSheet
+import com.papernotes.ui.components.NoteCard
+import com.papernotes.ui.components.PaperBackground
+import com.papernotes.ui.components.TeabagPull
+import com.papernotes.ui.components.ThemePickerSheet
+import com.papernotes.ui.theme.ThemeViewModel
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun NotesScreen(
+    sharedScope: SharedTransitionScope,
+    animatedScope: AnimatedVisibilityScope,
+    onOpenNote: (Long) -> Unit,
+    onCreateNote: (NoteType) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: NotesViewModel = hiltViewModel(),
+    themeViewModel: ThemeViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentTheme by themeViewModel.theme.collectAsStateWithLifecycle()
+
+    var columns by remember { mutableIntStateOf(2) }
+    var zoomAccum by remember { mutableFloatStateOf(1f) }
+    val transformState = rememberTransformableState { zoomChange, _, _ ->
+        zoomAccum *= zoomChange
+        when {
+            zoomAccum > 1.25f -> { columns = (columns - 1).coerceAtLeast(1); zoomAccum = 1f }
+            zoomAccum < 0.8f -> { columns = (columns + 1).coerceAtMost(3); zoomAccum = 1f }
+        }
+    }
+
+    // Tinten-Suche: ausschließlich über das Lupen-Icon (kein Pull-down mehr).
+    var searchVisible by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = searchVisible) {
+        searchVisible = false
+        viewModel.clearSearch()
+    }
+
+    // Position jeder Karte (Root-Koordinaten) – für die Knüddel-Animation.
+    val cardBounds = remember { mutableMapOf<Long, Rect>() }
+    var crumple by remember { mutableStateOf<CrumpleRequest?>(null) }
+    var moodTarget by remember { mutableStateOf<Note?>(null) }
+    var drawerOpen by remember { mutableStateOf(false) }
+    var fabExpanded by remember { mutableStateOf(false) }
+    var themeSheetOpen by remember { mutableStateOf(false) }
+
+    val contentPadding = WindowInsets.safeDrawing.asPaddingValues()
+
+    PaperBackground(modifier = modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = contentPadding.calculateTopPadding() + 46.dp),
+            ) {
+                AnimatedVisibility(
+                    visible = searchVisible,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    InkSearchBar(
+                        query = state.searchQuery,
+                        onQueryChange = viewModel::onSearchChange,
+                        onClose = {
+                            searchVisible = false
+                            viewModel.clearSearch()
+                        },
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                }
+
+                MoodFilterRow(
+                    presentMoods = state.presentMoods,
+                    active = state.activeMoodFilter,
+                    onToggle = viewModel::toggleMoodFilter,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
+                )
+
+                if (state.notes.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        EmptyState(modifier = Modifier.align(Alignment.Center))
+                    }
+                } else {
+                    LazyVerticalStaggeredGrid(
+                        columns = StaggeredGridCells.Fixed(columns),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .transformable(transformState),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 18.dp,
+                            bottom = contentPadding.calculateBottomPadding() + 110.dp,
+                        ),
+                        verticalItemSpacing = 14.dp,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        itemsIndexed(state.notes, key = { _, n -> n.note.id }) { _, gridNote ->
+                            val note = gridNote.note
+                            val hidden = crumple?.noteId == note.id
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = { value ->
+                                    if (value != SwipeToDismissBoxValue.Settled) {
+                                        viewModel.archive(note.id)
+                                        true
+                                    } else false
+                                },
+                            )
+
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                modifier = Modifier.animateItem(),
+                                backgroundContent = {
+                                    // Nur während des aktiven Swipes zeigen – sonst würde das
+                                    // Label hinter verblassten (gedimmten) Karten durchscheinen.
+                                    if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(8.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(
+                                                text = "archiviert",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = MaterialTheme.colorScheme.outline,
+                                            )
+                                        }
+                                    }
+                                },
+                            ) {
+                                if (!hidden) {
+                                    with(sharedScope) {
+                                        NoteCard(
+                                            note = note,
+                                            dimmed = gridNote.dimmed,
+                                            onClick = { onOpenNote(note.id) },
+                                            onToggleDogEar = { viewModel.toggleDogEar(note) },
+                                            onPickMood = { moodTarget = note },
+                                            modifier = Modifier
+                                                .onGloballyPositioned {
+                                                    cardBounds[note.id] = it.boundsInRoot()
+                                                }
+                                                .sharedBounds(
+                                                    rememberSharedContentState(key = "note-${note.id}"),
+                                                    animatedVisibilityScope = animatedScope,
+                                                ),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sichtbare Bedienelemente oben: Suche + Design (links), Archiv (rechts).
+            // Der Teebeutel bleibt mittig.
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 8.dp, top = contentPadding.calculateTopPadding() + 4.dp),
+            ) {
+                TopAction(
+                    icon = Icons.Rounded.Search,
+                    description = "Suchen",
+                    onClick = { searchVisible = true },
+                )
+                Spacer(Modifier.width(8.dp))
+                TopAction(
+                    icon = Icons.Rounded.Palette,
+                    description = "Design wählen",
+                    onClick = { themeSheetOpen = true },
+                )
+            }
+            TopAction(
+                icon = Icons.Rounded.Inventory2,
+                description = "Archiv & Papierkorb",
+                onClick = { drawerOpen = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 8.dp, top = contentPadding.calculateTopPadding() + 4.dp),
+            )
+
+            // Glücks-Teebeutel oben
+            TeabagPull(
+                delight = state.delight,
+                highlighted = state.delightAvailable,
+                stats = state.statsLine.ifBlank { null },
+                onPulled = { viewModel.markDelightPulled() },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = contentPadding.calculateTopPadding()),
+            )
+
+            // Schubladen-Lasche unten mittig (Archiv + Papierkorb) – zusätzlicher Einstieg
+            DrawerHandle(
+                archiveCount = state.archived.size,
+                trashCount = state.trashed.size,
+                onOpen = { drawerOpen = true },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = contentPadding.calculateBottomPadding() + 4.dp),
+            )
+
+            // Leichter Scrim, wenn das FAB-Fächer offen ist (Tap daneben schließt es)
+            if (fabExpanded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.45f))
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null,
+                        ) { fabExpanded = false },
+                )
+            }
+
+            // Runder "+"-Button mit Fächer (Notiz / Checkliste)
+            AddFab(
+                expanded = fabExpanded,
+                onExpandedChange = { fabExpanded = it },
+                onCreate = onCreateNote,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
+                    .padding(bottom = contentPadding.calculateBottomPadding()),
+            )
+        }
+    }
+
+    // Knüddel-Animation → Papierkorb
+    crumple?.let { req ->
+        CrumpleOverlay(
+            request = req,
+            onFinished = {
+                viewModel.moveToTrash(req.noteId)
+                crumple = null
+            },
+        )
+    }
+
+    // Stimmungs-/Pin-/Lösch-Sheet
+    moodTarget?.let { target ->
+        val targetSurface = target.mood.cardSurface()
+        MoodPickerSheet(
+            selected = target.mood,
+            pinned = target.pinned,
+            onPick = { mood ->
+                viewModel.setMood(target, mood)
+                moodTarget = null
+            },
+            onTogglePin = {
+                viewModel.togglePin(target)
+                moodTarget = null
+            },
+            onDelete = {
+                val bounds = cardBounds[target.id]
+                moodTarget = null
+                if (bounds != null) {
+                    crumple = CrumpleRequest(target.id, bounds, targetSurface)
+                } else {
+                    viewModel.moveToTrash(target.id)
+                }
+            },
+            onDismiss = { moodTarget = null },
+        )
+    }
+
+    // Theme-Picker
+    if (themeSheetOpen) {
+        ThemePickerSheet(
+            selected = currentTheme,
+            onPick = { themeViewModel.setTheme(it) },
+            onDismiss = { themeSheetOpen = false },
+        )
+    }
+
+    // Archiv-Schublade
+    if (drawerOpen) {
+        ArchiveDrawerSheet(
+            archived = state.archived,
+            trashed = state.trashed,
+            onRestoreArchived = viewModel::restore,
+            onRestoreTrashed = viewModel::restore,
+            onDismiss = { drawerOpen = false },
+        )
+    }
+}
+
+/** Kleiner, runder Icon-Button für die obere Leiste (Suche / Archiv). */
+@Composable
+private fun TopAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(42.dp)
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                CircleShape,
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+@Composable
+private fun EmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(text = "🌼", style = MaterialTheme.typography.displaySmall)
+        Text(
+            text = "Noch nichts notiert",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = "Tippe auf +, um deine erste Notiz zu schreiben.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline,
+            textAlign = TextAlign.Center,
+        )
+    }
+}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Mitternachtspapier: dunkler Fenster-Hintergrund, helle Icons aus. -->
+    <style name="Theme.PaperNotes" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/midnight_paper</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="Theme.PaperNotes.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/midnight_paper</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.PaperNotes</item>
+    </style>
+
+</resources>

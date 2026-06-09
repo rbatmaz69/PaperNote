@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">PaperNotes</string>
+    <string name="add_note">Neue Notiz</string>
+    <string name="empty_title">Noch nichts notiert</string>
+    <string name="empty_subtitle">Tippe auf +, um deine erste Notiz zu schreiben.</string>
+    <string name="note_title_hint">Titel</string>
+    <string name="note_body_hint">Schreib los …</string>
+    <string name="teabag_hint">Zieh am Faden für deinen Glücksmoment</string>
+    <string name="delete">Löschen</string>
+    <string name="archive">Archivieren</string>
+    <string name="mood_picker_title">Stimmung wählen</string>
+</resources>
