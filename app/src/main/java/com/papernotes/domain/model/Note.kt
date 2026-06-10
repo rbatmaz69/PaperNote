@@ -2,6 +2,8 @@ package com.papernotes.domain.model
 
 import com.papernotes.domain.ChecklistCodec
 import com.papernotes.domain.ChecklistItem
+import com.papernotes.domain.SketchCodec
+import com.papernotes.domain.SketchPoint
 import com.papernotes.domain.StampCodec
 import com.papernotes.domain.StampMotif
 
@@ -63,4 +65,11 @@ data class Note(
 
     fun withStampMotif(motif: StampMotif): Note =
         copy(body = StampCodec.serialize(stamps, motif))
+
+    /** Tinten-Striche (leer, außer bei Skizzen). */
+    val sketch: List<List<SketchPoint>>
+        get() = if (type == NoteType.SKETCH) SketchCodec.parse(body) else emptyList()
+
+    fun withSketch(strokes: List<List<SketchPoint>>): Note =
+        copy(body = SketchCodec.serialize(strokes))
 }

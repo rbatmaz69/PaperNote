@@ -36,6 +36,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,6 +80,7 @@ import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
 import com.papernotes.ui.components.ReminderSheet
+import com.papernotes.ui.components.SketchCanvas
 import com.papernotes.ui.components.StampCard
 import com.papernotes.ui.components.StampMotifPicker
 import com.papernotes.ui.components.paperPress
@@ -123,6 +126,7 @@ fun EditorScreen(
     LaunchedEffect(session) { viewModel.load(noteId, newType, session) }
     val note by viewModel.note.collectAsStateWithLifecycle()
     val items by viewModel.items.collectAsStateWithLifecycle()
+    val strokes by viewModel.strokes.collectAsStateWithLifecycle()
     val celebration by viewModel.celebration.collectAsStateWithLifecycle()
     val focusRequestId by viewModel.focusRequest.collectAsStateWithLifecycle()
     val linkedNotes by viewModel.linkedNotes.collectAsStateWithLifecycle()
@@ -299,6 +303,52 @@ fun EditorScreen(
                             onToggleDay = viewModel::toggleStamp,
                             compact = false,
                             modifier = Modifier.padding(top = 16.dp, bottom = 48.dp),
+                        )
+                    }
+
+                    NoteType.SKETCH -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp),
+                    ) {
+                        TitleField(
+                            title = note.title,
+                            onTitleChange = viewModel::onTitleChange,
+                            onNext = {},
+                        )
+                        // Werkzeuge: Rückgängig / Leeren
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SketchTool(
+                                icon = Icons.AutoMirrored.Rounded.Undo,
+                                label = "Rückgängig",
+                                onClick = {
+                                    haptics.tick()
+                                    viewModel.undoStroke()
+                                },
+                            )
+                            SketchTool(
+                                icon = Icons.Rounded.Delete,
+                                label = "Leeren",
+                                onClick = {
+                                    haptics.tick()
+                                    viewModel.clearSketch()
+                                },
+                            )
+                        }
+                        SketchCanvas(
+                            strokes = strokes,
+                            inkColor = note.mood.earAccent(),
+                            onStrokeFinished = {
+                                haptics.tick()
+                                viewModel.addStroke(it)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(top = 8.dp, bottom = 24.dp),
                         )
                     }
 
@@ -498,6 +548,27 @@ private fun LinkedNoteChips(
                 )
             }
         }
+    }
+}
+
+/** Kleiner Werkzeug-Knopf für den Skizzen-Editor (Rückgängig / Leeren). */
+@Composable
+private fun SketchTool(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Row(
+        modifier = Modifier
+            .paperPress(RoundedCornerShape(50)) { onClick() }
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(imageVector = icon, contentDescription = label, tint = ink, modifier = Modifier.size(18.dp))
+        Text(text = label, style = MaterialTheme.typography.labelMedium, color = ink)
     }
 }
 

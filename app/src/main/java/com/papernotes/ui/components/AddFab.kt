@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Approval
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Gesture
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -108,6 +109,17 @@ fun AddFab(
                         haptics.tap()
                         onExpandedChange(false)
                         onCreate(NoteType.CHECKLIST)
+                    },
+                )
+                MiniAction(
+                    label = "Skizze",
+                    icon = { tint ->
+                        Icon(Icons.Rounded.Gesture, null, tint = tint, modifier = Modifier.size(20.dp))
+                    },
+                    onClick = {
+                        haptics.tap()
+                        onExpandedChange(false)
+                        onCreate(NoteType.SKETCH)
                     },
                 )
                 MiniAction(

@@ -6,6 +6,7 @@ import com.papernotes.data.prefs.DelightPreferences
 import com.papernotes.data.repository.NoteRepository
 import com.papernotes.domain.ChecklistCodec
 import com.papernotes.domain.ChecklistItem
+import com.papernotes.domain.SketchPoint
 import com.papernotes.domain.StampCodec
 import com.papernotes.domain.StampMotif
 import com.papernotes.domain.model.MoodCategory
@@ -45,6 +46,10 @@ class EditorViewModel @Inject constructor(
 
     private val _items = MutableStateFlow<List<EditableChecklistItem>>(emptyList())
     val items: StateFlow<List<EditableChecklistItem>> = _items.asStateFlow()
+
+    /** Tinten-Striche der aktuellen Skizze (leer für andere Notiz-Typen). */
+    private val _strokes = MutableStateFlow<List<List<SketchPoint>>>(emptyList())
+    val strokes: StateFlow<List<List<SketchPoint>>> = _strokes.asStateFlow()
 
     /** Zähler; jede Erhöhung = ein Konfetti-Burst (letzter offener Eintrag abgehakt). */
     private val _celebration = MutableStateFlow(0)
@@ -99,6 +104,7 @@ class EditorViewModel @Inject constructor(
         _celebration.value = 0
         _focusRequest.value = null
         _items.value = emptyList()
+        _strokes.value = emptyList()
         currentId.value = if (id > 0L) id else 0L
 
         if (id <= 0L) {
@@ -116,10 +122,12 @@ class EditorViewModel @Inject constructor(
                     repository.setReminder(id, null)
                     _note.value = note.copy(reminderAt = null)
                     _items.value = note.checklist.map { it.toEditable() }
+                    _strokes.value = note.sketch
                     return@let
                 }
                 _note.value = note
                 _items.value = note.checklist.map { it.toEditable() }
+                _strokes.value = note.sketch
             }
         }
     }
@@ -261,6 +269,30 @@ class EditorViewModel @Inject constructor(
     /** Wählt das Stempel-Motiv der Karte (bewahrt die bereits gestempelten Tage). */
     fun setStampMotif(motif: StampMotif) {
         _note.update { it.withStampMotif(motif) }
+        scheduleSave()
+    }
+
+    // --- Skizze ---
+
+    /** Hängt einen fertig gezeichneten Strich an und persistiert die Skizze im body. */
+    fun addStroke(points: List<SketchPoint>) {
+        if (points.isEmpty()) return
+        _strokes.update { it + listOf(points) }
+        _note.update { it.withSketch(_strokes.value) }
+        scheduleSave()
+    }
+
+    fun undoStroke() {
+        if (_strokes.value.isEmpty()) return
+        _strokes.update { it.dropLast(1) }
+        _note.update { it.withSketch(_strokes.value) }
+        scheduleSave()
+    }
+
+    fun clearSketch() {
+        if (_strokes.value.isEmpty()) return
+        _strokes.value = emptyList()
+        _note.update { it.withSketch(emptyList()) }
         scheduleSave()
     }
 

@@ -176,6 +176,24 @@ fun NoteCard(
                             onToggleDay = { day -> onToggleStampDay?.invoke(day) },
                             compact = true,
                         )
+                        NoteType.SKETCH -> {
+                            val strokes = note.sketch
+                            if (strokes.isEmpty()) {
+                                Text(
+                                    text = "leere Skizze",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            } else {
+                                SketchView(
+                                    strokes = strokes,
+                                    inkColor = accent,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(140.dp),
+                                )
+                            }
+                        }
                         NoteType.TEXT -> Text(
                             text = note.preview,
                             style = MaterialTheme.typography.bodyMedium,

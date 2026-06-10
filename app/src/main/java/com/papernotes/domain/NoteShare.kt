@@ -26,6 +26,7 @@ fun Note.toShareText(): String {
             val today = LocalDate.now().toEpochDay()
             "Strähne: ${StampCodec.streak(stamps, today)} Tage · ${StampCodec.total(stamps)}× gestempelt"
         }
+        NoteType.SKETCH -> "🖊️ Skizze"
         NoteType.TEXT -> body.trim()
     }
 
