@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -144,11 +145,14 @@ private fun MiniAction(
     onClick: () -> Unit,
 ) {
     val tint = MaterialTheme.colorScheme.onSurface
+    // Kein Modifier.shadow hier: Unter dem fadeIn (Alpha < 1) der AnimatedVisibility würde
+    // der Elevation-Schatten als hartes dunkles Rechteck rendern. Stattdessen ein feiner,
+    // alpha-sicherer Rahmen für etwas Abhebung.
     Row(
         modifier = Modifier
-            .shadow(8.dp, RoundedCornerShape(22.dp))
             .paperPress(RoundedCornerShape(22.dp), onClick = onClick)
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(22.dp))
+            .border(1.dp, tint.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
