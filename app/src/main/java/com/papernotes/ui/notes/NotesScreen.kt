@@ -348,6 +348,7 @@ fun NotesScreen(
                                             },
                                             onToggleDogEar = { viewModel.toggleDogEar(note) },
                                             onPickMood = { moodTarget = note },
+                                            onLongPress = { viewModel.togglePin(note) },
                                             onToggleStampDay = { day -> viewModel.toggleStamp(note, day) },
                                             modifier = Modifier
                                                 .graphicsLayer {

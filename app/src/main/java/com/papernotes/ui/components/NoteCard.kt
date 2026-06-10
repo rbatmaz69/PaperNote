@@ -11,8 +11,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -56,12 +57,14 @@ import java.time.LocalDate
  * Druck), sanfte Stimmungsfläche, umknickbares Eselsohr, optional Washi-Tape (gepinnt)
  * und Checklisten-Vorschau. [dimmed] blendet Nicht-Treffer der Suche wie verdünnte Tinte aus.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun NoteCard(
     note: Note,
     onClick: () -> Unit,
     onToggleDogEar: () -> Unit,
     onPickMood: () -> Unit,
+    onLongPress: () -> Unit = {},
     modifier: Modifier = Modifier,
     dimmed: Boolean = false,
     reminderDue: Boolean = false,
@@ -142,10 +145,11 @@ fun NoteCard(
                     spotColor = Color.Black.copy(alpha = 0.25f),
                 )
                 .background(color = agedSurface, shape = shape)
-                .clickable(
+                .combinedClickable(
                     interactionSource = interaction,
                     indication = null,
                     onClick = onClick,
+                    onLongClick = onLongPress,
                 ),
         ) {
             Column(
