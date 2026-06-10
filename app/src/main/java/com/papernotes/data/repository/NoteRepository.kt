@@ -5,6 +5,8 @@ import com.papernotes.data.local.toDomain
 import com.papernotes.data.local.toEntity
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
+import com.papernotes.domain.model.NoteLink
+import com.papernotes.domain.model.linkOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.TimeUnit
@@ -29,6 +31,9 @@ interface NoteRepository {
     suspend fun restore(id: Long)
     suspend fun purgeOldTrash()
     suspend fun delete(id: Long)
+    fun observeLinks(): Flow<List<NoteLink>>
+    suspend fun linkNotes(a: Long, b: Long)
+    suspend fun unlinkNotes(a: Long, b: Long)
 }
 
 @Singleton
@@ -81,8 +86,24 @@ class NoteRepositoryImpl @Inject constructor(
     override suspend fun restore(id: Long) =
         dao.restore(id, System.currentTimeMillis())
 
-    override suspend fun purgeOldTrash() =
+    override suspend fun purgeOldTrash() {
         dao.purgeTrash(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30))
+        dao.purgeOrphanLinks()
+    }
 
-    override suspend fun delete(id: Long) = dao.delete(id)
+    override suspend fun delete(id: Long) {
+        dao.deleteLinksFor(id)
+        dao.delete(id)
+    }
+
+    override fun observeLinks(): Flow<List<NoteLink>> =
+        dao.observeLinks().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun linkNotes(a: Long, b: Long) =
+        dao.insertLink(linkOf(a, b).toEntity())
+
+    override suspend fun unlinkNotes(a: Long, b: Long) {
+        val link = linkOf(a, b)
+        dao.deleteLink(link.aId, link.bId)
+    }
 }

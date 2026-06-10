@@ -52,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -78,9 +79,11 @@ import com.papernotes.ui.components.InkSearchBar
 import com.papernotes.ui.components.MoodFilterRow
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.NoteCard
+import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
+import com.papernotes.ui.components.RedThreadOverlay
 import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.ui.components.TeabagPull
 import com.papernotes.ui.components.ThemePickerSheet
@@ -142,18 +145,27 @@ fun NotesScreen(
         viewModel.clearSearch()
     }
 
-    // Position jeder Karte (Root-Koordinaten) – für die Knüddel-Animation.
-    val cardBounds = remember { mutableMapOf<Long, Rect>() }
+    // Position jeder Karte (Root-Koordinaten) – für die Knüddel-Animation UND die roten
+    // Fäden. Snapshot-Map, damit das Faden-Overlay beim Scrollen/Zoomen live nachzeichnet.
+    val cardBounds = remember { mutableStateMapOf<Long, Rect>() }
     var crumple by remember { mutableStateOf<CrumpleRequest?>(null) }
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
     var shareText by remember { mutableStateOf("") }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
+    var linkTarget by remember { mutableStateOf<Note?>(null) }
     var reminderTarget by remember { mutableStateOf<Note?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
     var themeSheetOpen by remember { mutableStateOf(false) }
 
     val contentPadding = WindowInsets.safeDrawing.asPaddingValues()
+
+    // Veraltete Karten-Positionen entfernen (archiviert/gelöscht), damit kein roter Faden
+    // zu einer Geister-Position gezeichnet wird.
+    LaunchedEffect(state.notes) {
+        val visible = state.notes.map { it.note.id }.toSet()
+        cardBounds.keys.retainAll(visible)
+    }
 
     PaperBackground(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -264,6 +276,14 @@ fun NotesScreen(
                     }
                 }
             }
+
+            // Rote Fäden zwischen verknüpften Karten (über den Karten, unter den Bedienelementen).
+            RedThreadOverlay(
+                links = state.links,
+                bounds = cardBounds,
+                dimmedIds = state.notes.filter { it.dimmed }.map { it.note.id }.toSet(),
+                modifier = Modifier.fillMaxSize(),
+            )
 
             // Sichtbare Bedienelemente oben: Suche + Design (links), Archiv (rechts).
             // Der Teebeutel bleibt mittig.
@@ -381,6 +401,10 @@ fun NotesScreen(
                 moodTarget = null
                 reminderTarget = target
             },
+            onLink = {
+                moodTarget = null
+                linkTarget = target
+            },
             onShare = {
                 val bounds = cardBounds[target.id]
                 val text = target.toShareText()
@@ -419,6 +443,26 @@ fun NotesScreen(
                 reminderTarget = null
             },
             onDismiss = { reminderTarget = null },
+        )
+    }
+
+    // Roter-Faden-Auswahl: andere Notiz zum Verknüpfen/Lösen wählen
+    linkTarget?.let { target ->
+        val linkedIds = state.links
+            .filter { it.involves(target.id) }
+            .mapNotNull { it.otherEnd(target.id) }
+            .toSet()
+        NoteLinkPickerSheet(
+            candidates = state.notes.map { it.note }.filter { it.id != target.id },
+            linkedIds = linkedIds,
+            onToggle = { otherId ->
+                if (otherId in linkedIds) {
+                    viewModel.unlinkNotes(target.id, otherId)
+                } else {
+                    viewModel.linkNotes(target.id, otherId)
+                }
+            },
+            onDismiss = { linkTarget = null },
         )
     }
 

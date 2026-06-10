@@ -25,6 +25,7 @@ object DatabaseModule {
             .addMigrations(
                 PaperNotesDatabase.MIGRATION_1_2,
                 PaperNotesDatabase.MIGRATION_2_3,
+                PaperNotesDatabase.MIGRATION_3_4,
             )
             .build()
 

@@ -8,6 +8,7 @@ import com.papernotes.data.repository.NoteRepository
 import com.papernotes.domain.model.DailyDelight
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
+import com.papernotes.domain.model.NoteLink
 import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,9 +34,18 @@ data class NotesUiState(
     val presentMoods: List<MoodCategory> = emptyList(),
     val activeMoodFilter: MoodCategory? = null,
     val searchQuery: String = "",
+    val links: List<NoteLink> = emptyList(),
     val delight: DailyDelight,
     val delightAvailable: Boolean = true,
     val statsLine: String = "",
+)
+
+/** Zwischenergebnis: Grid-Notizen + Filter-Metadaten + die roten Fäden. */
+private data class GridState(
+    val notes: List<GridNote>,
+    val presentMoods: List<MoodCategory>,
+    val activeMood: MoodCategory?,
+    val links: List<NoteLink>,
 )
 
 @HiltViewModel
@@ -55,22 +65,24 @@ class NotesViewModel @Inject constructor(
         viewModelScope.launch { repository.purgeOldTrash() }
     }
 
-    private val filteredNotes = combine(
+    private val gridState = combine(
         repository.observeActiveNotes(),
         searchQuery,
         moodFilter,
-    ) { notes, query, mood ->
+        repository.observeLinks(),
+    ) { notes, query, mood, links ->
         val trimmed = query.trim()
-        Triple(
-            notes.map { note ->
+        GridState(
+            notes = notes.map { note ->
                 val matchesQuery = trimmed.isEmpty() ||
                     note.title.contains(trimmed, ignoreCase = true) ||
                     note.body.contains(trimmed, ignoreCase = true)
                 val matchesMood = mood == null || note.mood == mood
                 GridNote(note = note, dimmed = !(matchesQuery && matchesMood))
             },
-            notes.map { it.mood }.distinct().sortedBy { it.ordinal },
-            mood,
+            presentMoods = notes.map { it.mood }.distinct().sortedBy { it.ordinal },
+            activeMood = mood,
+            links = links,
         )
     }
 
@@ -87,19 +99,20 @@ class NotesViewModel @Inject constructor(
 
     val uiState: StateFlow<NotesUiState> =
         combine(
-            filteredNotes,
+            gridState,
             repository.observeArchivedNotes(),
             repository.observeTrashedNotes(),
             delightPreferences.availableToday,
             dailyStats,
-        ) { (gridNotes, presentMoods, activeMood), archived, trashed, available, stats ->
+        ) { grid, archived, trashed, available, stats ->
             NotesUiState(
-                notes = gridNotes,
+                notes = grid.notes,
                 archived = archived,
                 trashed = trashed,
-                presentMoods = presentMoods,
-                activeMoodFilter = activeMood,
+                presentMoods = grid.presentMoods,
+                activeMoodFilter = grid.activeMood,
                 searchQuery = searchQuery.value,
+                links = grid.links,
                 delight = delight,
                 delightAvailable = available,
                 statsLine = stats,
@@ -138,6 +151,10 @@ class NotesViewModel @Inject constructor(
             reminderScheduler.dismissNotification(note.id)
         }
     }
+
+    fun linkNotes(a: Long, b: Long) = viewModelScope.launch { repository.linkNotes(a, b) }
+
+    fun unlinkNotes(a: Long, b: Long) = viewModelScope.launch { repository.unlinkNotes(a, b) }
 
     fun archive(id: Long) = viewModelScope.launch { repository.archive(id) }
 

@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +24,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -63,6 +72,7 @@ import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.DogEar
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.PaperBackground
+import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
 import com.papernotes.ui.components.ReminderSheet
@@ -84,6 +94,7 @@ fun EditorScreen(
     sharedScope: SharedTransitionScope,
     animatedScope: AnimatedVisibilityScope,
     onBack: () -> Unit,
+    onOpenLinkedNote: (Long) -> Unit,
     viewModel: EditorViewModel = hiltViewModel(),
 ) {
     val haptics = rememberPaperHaptics()
@@ -108,9 +119,12 @@ fun EditorScreen(
     val items by viewModel.items.collectAsStateWithLifecycle()
     val celebration by viewModel.celebration.collectAsStateWithLifecycle()
     val focusRequestId by viewModel.focusRequest.collectAsStateWithLifecycle()
+    val linkedNotes by viewModel.linkedNotes.collectAsStateWithLifecycle()
+    val candidateNotes by viewModel.candidateNotes.collectAsStateWithLifecycle()
 
     var showMood by remember { mutableStateOf(false) }
     var showReminder by remember { mutableStateOf(false) }
+    var showLinkPicker by remember { mutableStateOf(false) }
     var confettiKey by remember { mutableStateOf<Int?>(null) }
     var editorBounds by remember { mutableStateOf(Rect.Zero) }
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
@@ -214,6 +228,19 @@ fun EditorScreen(
                     }
                 }
 
+                // Sprung-Chips zu per rotem Faden verknüpften Notizen
+                if (linkedNotes.isNotEmpty()) {
+                    LinkedNoteChips(
+                        notes = linkedNotes,
+                        onOpen = { id ->
+                            haptics.tap()
+                            viewModel.flush()
+                            onOpenLinkedNote(id)
+                        },
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                    )
+                }
+
                 if (note.type == NoteType.CHECKLIST) {
                     ChecklistEditor(
                         items = items,
@@ -310,6 +337,10 @@ fun EditorScreen(
                     showMood = false
                     showReminder = true
                 },
+                onLink = {
+                    showMood = false
+                    showLinkPicker = true
+                },
                 onShare = {
                     showMood = false
                     val text = note.toShareText()
@@ -345,6 +376,60 @@ fun EditorScreen(
                 },
                 onDismiss = { showReminder = false },
             )
+        }
+
+        if (showLinkPicker) {
+            val linkedIds = linkedNotes.map { it.id }.toSet()
+            NoteLinkPickerSheet(
+                candidates = candidateNotes,
+                linkedIds = linkedIds,
+                onToggle = { otherId ->
+                    haptics.tick()
+                    if (otherId in linkedIds) {
+                        viewModel.unlinkNotes(otherId)
+                    } else {
+                        viewModel.linkNotes(otherId)
+                    }
+                },
+                onDismiss = { showLinkPicker = false },
+            )
+        }
+    }
+}
+
+/** Antippbare Chips ("🧵 Titel") zu verknüpften Notizen – Tap springt direkt hinüber. */
+@Composable
+private fun LinkedNoteChips(
+    notes: List<com.papernotes.domain.model.Note>,
+    onOpen: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val thread = Color(0xFFB3402F)
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        notes.forEach { linked ->
+            Row(
+                modifier = Modifier
+                    .background(thread.copy(alpha = 0.12f), RoundedCornerShape(50))
+                    .clickable { onOpen(linked.id) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(thread, CircleShape),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = linked.title.ifBlank { linked.preview },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
         }
     }
 }

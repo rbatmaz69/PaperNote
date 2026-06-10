@@ -67,6 +67,10 @@ fun PaperNotesNavGraph(initialNoteId: Long? = null) {
                     sharedScope = this@SharedTransitionLayout,
                     animatedScope = this@AnimatedContent,
                     onBack = { selectedNoteId = null },
+                    onOpenLinkedNote = { id ->
+                        editorSession++
+                        selectedNoteId = id
+                    },
                 )
             }
         }

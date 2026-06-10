@@ -14,8 +14,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -48,6 +51,31 @@ class EditorViewModel @Inject constructor(
     private val _focusRequest = MutableStateFlow<Long?>(null)
     val focusRequest: StateFlow<Long?> = _focusRequest.asStateFlow()
 
+    /** Id der aktuell geladenen Notiz (0 = noch ungespeichert) – Basis für die roten Fäden. */
+    private val currentId = MutableStateFlow(0L)
+
+    /** Per rotem Faden verknüpfte Notizen (für die Sprung-Chips). */
+    val linkedNotes: StateFlow<List<Note>> = combine(
+        currentId,
+        repository.observeLinks(),
+        repository.observeActiveNotes(),
+    ) { id, links, notes ->
+        if (id == 0L) {
+            emptyList()
+        } else {
+            val partners = links.filter { it.involves(id) }.mapNotNull { it.otherEnd(id) }.toSet()
+            notes.filter { it.id in partners }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Verknüpfbare Notizen (alle aktiven außer der aktuellen). */
+    val candidateNotes: StateFlow<List<Note>> = combine(
+        currentId,
+        repository.observeActiveNotes(),
+    ) { id, notes ->
+        notes.filter { it.id != id }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private var loadedSession = -1
     private var saveJob: Job? = null
     private var nextUiId = 1L
@@ -68,6 +96,7 @@ class EditorViewModel @Inject constructor(
         _celebration.value = 0
         _focusRequest.value = null
         _items.value = emptyList()
+        currentId.value = if (id > 0L) id else 0L
 
         if (id <= 0L) {
             _note.value = Note(type = newType)
@@ -194,6 +223,29 @@ class EditorViewModel @Inject constructor(
         _focusRequest.value = null
     }
 
+    // --- Roter Faden ---
+
+    /** Verknüpft die (ggf. erst zu speichernde) Notiz mit [otherId]. */
+    fun linkNotes(otherId: Long) = viewModelScope.launch {
+        val id = ensureSaved()
+        if (id != otherId) repository.linkNotes(id, otherId)
+    }
+
+    fun unlinkNotes(otherId: Long) = viewModelScope.launch {
+        val id = _note.value.id
+        if (id != 0L) repository.unlinkNotes(id, otherId)
+    }
+
+    /** Stellt sicher, dass die Notiz eine id hat (für Verknüpfungen), und gibt sie zurück. */
+    private suspend fun ensureSaved(): Long {
+        val snapshot = _note.value
+        if (snapshot.id != 0L) return snapshot.id
+        val id = repository.save(snapshot)
+        _note.update { if (it.id == 0L) it.copy(id = id) else it }
+        currentId.value = id
+        return id
+    }
+
     // --- Persistenz ---
 
     /** Sofort speichern – beim Verlassen des Editors. Notiz wird sofort gefangen (race-sicher). */
@@ -242,6 +294,7 @@ class EditorViewModel @Inject constructor(
         if (note.id == 0L) {
             // Nur die id nachtragen, wenn der Editor noch dieselbe (frisch angelegte) Notiz zeigt.
             _note.update { if (it.id == 0L) it.copy(id = id) else it }
+            if (currentId.value == 0L) currentId.value = id
         }
     }
 }

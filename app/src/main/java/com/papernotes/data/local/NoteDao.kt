@@ -63,4 +63,24 @@ interface NoteDao {
 
     @Query("DELETE FROM notes WHERE id = :id")
     suspend fun delete(id: Long)
+
+    // --- Verknüpfungen ("roter Faden") ---
+
+    @Query("SELECT * FROM note_links")
+    fun observeLinks(): Flow<List<NoteLinkEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertLink(link: NoteLinkEntity)
+
+    @Query("DELETE FROM note_links WHERE aId = :a AND bId = :b")
+    suspend fun deleteLink(a: Long, b: Long)
+
+    @Query("DELETE FROM note_links WHERE aId = :id OR bId = :id")
+    suspend fun deleteLinksFor(id: Long)
+
+    @Query(
+        "DELETE FROM note_links WHERE aId NOT IN (SELECT id FROM notes) " +
+            "OR bId NOT IN (SELECT id FROM notes)",
+    )
+    suspend fun purgeOrphanLinks()
 }
