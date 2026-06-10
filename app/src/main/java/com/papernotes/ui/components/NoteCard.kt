@@ -1,5 +1,6 @@
 package com.papernotes.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -86,7 +87,10 @@ fun NoteCard(
     )
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
         label = "cardScale",
     )
     val inkAlpha by animateFloatAsState(
@@ -94,6 +98,9 @@ fun NoteCard(
         animationSpec = tween(260),
         label = "cardDim",
     )
+    // Stimmungswechsel: Kartenfläche & Akzent weich überblenden.
+    val surface by animateColorAsState(note.mood.cardSurface(), tween(320), label = "cardSurface")
+    val accent by animateColorAsState(note.mood.earAccent(), tween(320), label = "cardAccent")
 
     val shape = RoundedCornerShape(18.dp)
 
@@ -119,7 +126,7 @@ fun NoteCard(
                     clip = false,
                     spotColor = Color.Black.copy(alpha = 0.25f),
                 )
-                .background(color = note.mood.cardSurface(), shape = shape)
+                .background(color = surface, shape = shape)
                 .clickable(
                     interactionSource = interaction,
                     indication = null,
@@ -170,7 +177,7 @@ fun NoteCard(
         // Washi-Tape ragt leicht über die Oberkante – wie aufgeklebt
         if (note.pinned) {
             WashiTape(
-                color = note.mood.earAccent(),
+                color = accent,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset(y = (-9).dp),
@@ -180,7 +187,7 @@ fun NoteCard(
         // Papier-Reiter am linken Rand: ruhiger Hinweis auf eine gesetzte Erinnerung.
         if (note.hasReminder) {
             ReminderTab(
-                color = note.mood.earAccent(),
+                color = accent,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .offset(x = (-5).dp),

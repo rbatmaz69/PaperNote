@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -88,7 +87,7 @@ fun InkSearchBar(
             tint = MaterialTheme.colorScheme.outline,
             modifier = Modifier
                 .size(20.dp)
-                .clickable { onClose() },
+                .paperPress(CircleShape) { onClose() },
         )
     }
 }
@@ -125,6 +124,7 @@ fun MoodFilterRow(
                         scaleY = scale
                     }
                     .size(14.dp)
+                    .paperPress(CircleShape) { onToggle(mood) }
                     .background(mood.earAccent(), CircleShape)
                     .then(
                         if (isActive) {
@@ -134,8 +134,7 @@ fun MoodFilterRow(
                                 CircleShape,
                             )
                         } else Modifier,
-                    )
-                    .clickable { onToggle(mood) },
+                    ),
             )
         }
     }

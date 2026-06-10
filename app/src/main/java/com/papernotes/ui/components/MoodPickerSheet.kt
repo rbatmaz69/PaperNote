@@ -2,7 +2,6 @@ package com.papernotes.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,13 +77,13 @@ fun MoodPickerSheet(
                     Box(
                         modifier = Modifier
                             .size(44.dp)
+                            .paperPress(CircleShape) { onPick(mood) }
                             .background(mood.earAccent(), CircleShape)
                             .then(
                                 if (isSelected) {
                                     Modifier.border(2.5.dp, ink, CircleShape)
                                 } else Modifier,
-                            )
-                            .clickable { onPick(mood) },
+                            ),
                     )
                 }
             }
@@ -93,11 +92,11 @@ fun MoodPickerSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onTogglePin() }
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(14.dp),
                     )
-                    .clickable { onTogglePin() }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -118,11 +117,11 @@ fun MoodPickerSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onSetReminder() }
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(14.dp),
                     )
-                    .clickable { onSetReminder() }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -143,11 +142,11 @@ fun MoodPickerSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onLink() }
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(14.dp),
                     )
-                    .clickable { onLink() }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -168,11 +167,11 @@ fun MoodPickerSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onShare() }
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(14.dp),
                     )
-                    .clickable { onShare() }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -192,8 +191,8 @@ fun MoodPickerSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onDelete() }
                     .background(Terracotta.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
-                    .clickable { onDelete() }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

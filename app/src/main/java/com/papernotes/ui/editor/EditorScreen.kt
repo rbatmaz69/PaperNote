@@ -9,12 +9,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -76,6 +77,7 @@ import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
 import com.papernotes.ui.components.ReminderSheet
+import com.papernotes.ui.components.paperPress
 import com.papernotes.util.findActivity
 import com.papernotes.util.rememberPaperHaptics
 import com.papernotes.util.sharePlainText
@@ -131,7 +133,8 @@ fun EditorScreen(
     var shareText by remember { mutableStateOf("") }
     val bodyFocus = remember { FocusRequester() }
     val ink = MaterialTheme.colorScheme.onBackground
-    val noteSurface = note.mood.cardSurface()
+    // Stimmungswechsel: Editor-Hintergrund weich durchwaschen.
+    val noteSurface by animateColorAsState(note.mood.cardSurface(), tween(320), label = "editorSurface")
 
     // Konfetti, wenn der letzte offene Eintrag abgehakt wurde
     LaunchedEffect(celebration) {
@@ -413,8 +416,8 @@ private fun LinkedNoteChips(
         notes.forEach { linked ->
             Row(
                 modifier = Modifier
+                    .paperPress(RoundedCornerShape(50)) { onOpen(linked.id) }
                     .background(thread.copy(alpha = 0.12f), RoundedCornerShape(50))
-                    .clickable { onOpen(linked.id) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

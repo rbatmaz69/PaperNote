@@ -2,7 +2,6 @@ package com.papernotes.ui.editor
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.papernotes.ui.components.PaperCheckbox
+import com.papernotes.ui.components.paperPress
 import com.papernotes.util.rememberPaperHaptics
 
 /**
@@ -95,7 +96,7 @@ fun ChecklistEditor(
                     checked = item.checked,
                     color = accentColor,
                     inkColor = ink,
-                    modifier = Modifier.clickable {
+                    modifier = Modifier.paperPress(RoundedCornerShape(6.dp)) {
                         haptics.tick()
                         onToggle(item.uiId)
                     },
@@ -148,7 +149,7 @@ fun ChecklistEditor(
                     tint = MaterialTheme.colorScheme.outline,
                     modifier = Modifier
                         .size(18.dp)
-                        .clickable {
+                        .paperPress(RoundedCornerShape(percent = 50)) {
                             haptics.tap()
                             onRemove(item.uiId)
                         },
@@ -161,7 +162,7 @@ fun ChecklistEditor(
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem()
-                    .clickable {
+                    .paperPress(RoundedCornerShape(8.dp)) {
                         haptics.tap()
                         onAddAfter(null)
                     }

@@ -5,7 +5,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,7 +61,7 @@ fun DrawerHandle(
     Box(
         modifier = modifier
             .width(72.dp)
-            .clickable {
+            .paperPress(RoundedCornerShape(8.dp)) {
                 haptics.tap()
                 onOpen()
             }
@@ -177,7 +176,7 @@ private fun DrawerTab(label: String, active: Boolean, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .alpha(if (active) 1f else 0.4f)
-            .clickable(onClick = onClick),
+            .paperPress(RoundedCornerShape(8.dp), onClick = onClick),
     )
 }
 
@@ -196,8 +195,8 @@ private fun ArchivedRow(note: Note, onRestore: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .paperPress(RoundedCornerShape(12.dp), onClick = onRestore)
             .background(note.mood.cardSurface(), RoundedCornerShape(12.dp))
-            .clickable(onClick = onRestore)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -232,7 +231,7 @@ private fun CrumpledBall(note: Note, onRestore: () -> Unit) {
         Canvas(
             modifier = Modifier
                 .size(64.dp)
-                .clickable(enabled = !restoring) {
+                .paperPress(RoundedCornerShape(percent = 50), enabled = !restoring) {
                     restoring = true
                     scope.launch {
                         crumpleProgress.animateTo(

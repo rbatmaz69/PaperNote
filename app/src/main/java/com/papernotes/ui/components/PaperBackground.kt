@@ -46,23 +46,25 @@ fun PaperBackground(
                 shader.setFloatUniform("iStrength", strength)
                 val brush = ShaderBrush(shader)
 
+                // Punkt-Positionen einmalig (pro Größe) berechnen, statt in jedem Frame –
+                // entlastet das Zeichnen u.a. während der Theme-Überblendung.
+                val areaW = size.width
+                val areaH = size.height
+                val dots = if (dotGrid) buildList {
+                    var y = dotSpacingPx
+                    while (y < areaH) {
+                        var x = dotSpacingPx
+                        while (x < areaW) {
+                            add(Offset(x, y))
+                            x += dotSpacingPx
+                        }
+                        y += dotSpacingPx
+                    }
+                } else emptyList()
+
                 onDrawBehind {
                     drawRect(brush = brush)
-                    if (dotGrid) {
-                        var y = dotSpacingPx
-                        while (y < size.height) {
-                            var x = dotSpacingPx
-                            while (x < size.width) {
-                                drawCircle(
-                                    color = dotColor,
-                                    radius = dotRadiusPx,
-                                    center = Offset(x, y),
-                                )
-                                x += dotSpacingPx
-                            }
-                            y += dotSpacingPx
-                        }
-                    }
+                    dots.forEach { drawCircle(color = dotColor, radius = dotRadiusPx, center = it) }
                 }
             },
     ) {

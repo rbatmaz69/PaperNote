@@ -1,8 +1,10 @@
 package com.papernotes.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.Canvas
@@ -43,6 +45,8 @@ fun DogEar(
         ),
         label = "dogEarFold",
     )
+    // Stimmungswechsel: Akzentfarbe weich überblenden statt hart umspringen.
+    val animatedAccent by animateColorAsState(accent, tween(320), label = "dogEarAccent")
 
     Canvas(
         modifier = modifier
@@ -82,7 +86,7 @@ fun DogEar(
             lineTo(w - leg * 0.45f, leg * 0.45f)
             close()
         }
-        drawPath(tint, color = accent.copy(alpha = 0.85f))
+        drawPath(tint, color = animatedAccent.copy(alpha = 0.85f))
 
         // feine Faltlinie
         drawLine(

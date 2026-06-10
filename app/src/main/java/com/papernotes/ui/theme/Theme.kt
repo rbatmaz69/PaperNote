@@ -1,7 +1,13 @@
 package com.papernotes.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -23,15 +29,26 @@ val LocalPaperDark = compositionLocalOf { false }
  * PaperNotes baut sein warmes [androidx.compose.material3.ColorScheme] aus dem gewählten
  * [PaperTheme]. Stimmungsfarben kommen über [com.papernotes.domain.model.MoodCategory] dazu.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaperNotesTheme(
     theme: PaperTheme = PaperTheme.AUTO,
     content: @Composable () -> Unit,
 ) {
     val resolved = theme.resolve(isSystemInDarkTheme())
-    val scheme = if (resolved.dark) resolved.darkScheme() else resolved.lightScheme()
+    val target = if (resolved.dark) resolved.darkScheme() else resolved.lightScheme()
 
-    CompositionLocalProvider(LocalPaperDark provides resolved.dark) {
+    // Theme-Wechsel weich überblenden: die Leitfarben animiert nachführen.
+    val scheme = target.animated()
+
+    // Dezenter Papier-/Tinten-Ripple für Material-Buttons (z. B. IconButtons) statt
+    // hartem Default – passt zum Papier-Druck der übrigen Flächen.
+    val ripple = RippleConfiguration(color = target.onSurface)
+
+    CompositionLocalProvider(
+        LocalPaperDark provides resolved.dark,
+        LocalRippleConfiguration provides ripple,
+    ) {
         MaterialTheme(
             colorScheme = scheme,
             typography = PaperTypography,
@@ -39,6 +56,27 @@ fun PaperNotesTheme(
             content = content,
         )
     }
+}
+
+/** Führt die Leitfarben des Schemas animiert nach – ergibt eine weiche Theme-Überblendung. */
+@Composable
+private fun ColorScheme.animated(): ColorScheme {
+    val spec = tween<androidx.compose.ui.graphics.Color>(durationMillis = 450)
+    return copy(
+        primary = animateColorAsState(primary, spec, label = "primary").value,
+        onPrimary = animateColorAsState(onPrimary, spec, label = "onPrimary").value,
+        secondary = animateColorAsState(secondary, spec, label = "secondary").value,
+        onSecondary = animateColorAsState(onSecondary, spec, label = "onSecondary").value,
+        tertiary = animateColorAsState(tertiary, spec, label = "tertiary").value,
+        onTertiary = animateColorAsState(onTertiary, spec, label = "onTertiary").value,
+        background = animateColorAsState(background, spec, label = "background").value,
+        onBackground = animateColorAsState(onBackground, spec, label = "onBackground").value,
+        surface = animateColorAsState(surface, spec, label = "surface").value,
+        onSurface = animateColorAsState(onSurface, spec, label = "onSurface").value,
+        surfaceVariant = animateColorAsState(surfaceVariant, spec, label = "surfaceVariant").value,
+        onSurfaceVariant = animateColorAsState(onSurfaceVariant, spec, label = "onSurfaceVariant").value,
+        outline = animateColorAsState(outline, spec, label = "outline").value,
+    )
 }
 
 private fun PaperTheme.lightScheme() = lightColorScheme(

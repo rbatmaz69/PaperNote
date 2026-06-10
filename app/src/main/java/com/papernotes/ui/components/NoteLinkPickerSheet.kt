@@ -2,7 +2,6 @@ package com.papernotes.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,11 +96,11 @@ private fun LinkRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .paperPress(RoundedCornerShape(14.dp), onClick = onClick)
             .background(
                 if (linked) ThreadRed.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
                 RoundedCornerShape(14.dp),
             )
-            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

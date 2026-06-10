@@ -147,8 +147,8 @@ private fun MiniAction(
     Row(
         modifier = Modifier
             .shadow(8.dp, RoundedCornerShape(22.dp))
+            .paperPress(RoundedCornerShape(22.dp), onClick = onClick)
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

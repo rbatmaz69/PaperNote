@@ -10,6 +10,14 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -48,6 +56,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -57,9 +66,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextAlign
@@ -84,6 +95,7 @@ import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
 import com.papernotes.ui.components.RedThreadOverlay
+import com.papernotes.ui.components.paperPress
 import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.ui.components.TeabagPull
 import com.papernotes.ui.components.ThemePickerSheet
@@ -153,6 +165,17 @@ fun NotesScreen(
     var shareText by remember { mutableStateOf("") }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
     var linkTarget by remember { mutableStateOf<Note?>(null) }
+
+    // Welche Karten schon „eingeflogen" sind – neue Notizen fallen einmalig herein.
+    val introducedIds = remember { mutableStateMapOf<Long, Unit>() }
+    var introSeeded by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+
+    // Gedimmte (Such-/Filter-Nicht-Treffer) Ids nur neu berechnen, wenn sich die Notizen
+    // ändern – nicht bei jedem 30-s-Tick oder jeder Bounds-Aktualisierung.
+    val dimmedIds by remember {
+        derivedStateOf { state.notes.filter { it.dimmed }.map { it.note.id }.toSet() }
+    }
     var reminderTarget by remember { mutableStateOf<Note?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
@@ -165,6 +188,12 @@ fun NotesScreen(
     LaunchedEffect(state.notes) {
         val visible = state.notes.map { it.note.id }.toSet()
         cardBounds.keys.retainAll(visible)
+        // Beim ersten Laden alle bestehenden Notizen als „schon da" markieren – nur danach
+        // erstellte Notizen sollen hereinfallen.
+        if (!introSeeded && state.notes.isNotEmpty()) {
+            visible.forEach { introducedIds[it] = Unit }
+            introSeeded = true
+        }
     }
 
     PaperBackground(modifier = modifier.fillMaxSize()) {
@@ -220,6 +249,23 @@ fun NotesScreen(
                         itemsIndexed(state.notes, key = { _, n -> n.note.id }) { _, gridNote ->
                             val note = gridNote.note
                             val hidden = crumple?.noteId == note.id
+
+                            // Neue Notiz fällt einmalig federnd ins Grid.
+                            val willDrop = introSeeded && note.id !in introducedIds
+                            val appear = remember(note.id) { Animatable(if (willDrop) 0f else 1f) }
+                            LaunchedEffect(note.id) {
+                                if (willDrop) {
+                                    introducedIds[note.id] = Unit
+                                    appear.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessLow,
+                                        ),
+                                    )
+                                }
+                            }
+                            val dropPx = with(density) { 20.dp.toPx() }
                             val dismissState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = { value ->
                                     if (value != SwipeToDismissBoxValue.Settled) {
@@ -261,6 +307,13 @@ fun NotesScreen(
                                             onToggleDogEar = { viewModel.toggleDogEar(note) },
                                             onPickMood = { moodTarget = note },
                                             modifier = Modifier
+                                                .graphicsLayer {
+                                                    val a = appear.value
+                                                    alpha = a
+                                                    scaleX = 0.8f + 0.2f * a
+                                                    scaleY = 0.8f + 0.2f * a
+                                                    translationY = (1f - a) * -dropPx
+                                                }
                                                 .onGloballyPositioned {
                                                     cardBounds[note.id] = it.boundsInRoot()
                                                 }
@@ -281,7 +334,7 @@ fun NotesScreen(
             RedThreadOverlay(
                 links = state.links,
                 bounds = cardBounds,
-                dimmedIds = state.notes.filter { it.dimmed }.map { it.note.id }.toSet(),
+                dimmedIds = dimmedIds,
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -498,11 +551,11 @@ private fun TopAction(
     Box(
         modifier = modifier
             .size(42.dp)
+            .paperPress(CircleShape, onClick = onClick)
             .background(
                 MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
                 CircleShape,
-            )
-            .clickable(onClick = onClick),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -516,8 +569,19 @@ private fun TopAction(
 
 @Composable
 private fun EmptyState(modifier: Modifier = Modifier) {
+    // Sanftes Schweben – wirkt lebendig statt statisch.
+    val bob = rememberInfiniteTransition(label = "emptyBob")
+    val phase by bob.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(3000), RepeatMode.Reverse),
+        label = "bobPhase",
+    )
+    val amp = with(LocalDensity.current) { 6.dp.toPx() }
     Column(
-        modifier = modifier.padding(32.dp),
+        modifier = modifier
+            .padding(32.dp)
+            .graphicsLayer { translationY = phase * amp },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

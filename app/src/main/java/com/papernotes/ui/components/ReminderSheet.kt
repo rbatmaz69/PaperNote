@@ -1,7 +1,6 @@
 package com.papernotes.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -90,8 +89,8 @@ fun ReminderSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .paperPress(RoundedCornerShape(14.dp)) { onClear() }
                         .background(Terracotta.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
-                        .clickable { onClear() }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -133,8 +132,8 @@ private fun PresetRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .paperPress(RoundedCornerShape(14.dp)) { onClick() }
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
-            .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

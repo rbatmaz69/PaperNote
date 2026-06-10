@@ -41,8 +41,8 @@ fun PaperNotesNavGraph(initialNoteId: Long? = null) {
             targetState = selectedNoteId,
             label = "paperNav",
             transitionSpec = {
-                fadeIn(tween(durationMillis = 240)) togetherWith
-                    fadeOut(tween(durationMillis = 180))
+                fadeIn(tween(durationMillis = 160)) togetherWith
+                    fadeOut(tween(durationMillis = 120))
             },
         ) { target ->
             if (target == null) {
