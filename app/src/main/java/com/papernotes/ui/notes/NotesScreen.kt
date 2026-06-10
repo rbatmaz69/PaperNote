@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.cardSurface
+import com.papernotes.domain.toShareText
 import com.papernotes.ui.components.AddFab
 import com.papernotes.ui.components.ArchiveDrawerSheet
 import com.papernotes.ui.components.CrumpleOverlay
@@ -78,10 +79,13 @@ import com.papernotes.ui.components.MoodFilterRow
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.NoteCard
 import com.papernotes.ui.components.PaperBackground
+import com.papernotes.ui.components.PaperPlaneOverlay
+import com.papernotes.ui.components.PaperPlaneRequest
 import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.ui.components.TeabagPull
 import com.papernotes.ui.components.ThemePickerSheet
 import com.papernotes.ui.theme.ThemeViewModel
+import com.papernotes.util.sharePlainText
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -141,6 +145,8 @@ fun NotesScreen(
     // Position jeder Karte (Root-Koordinaten) – für die Knüddel-Animation.
     val cardBounds = remember { mutableMapOf<Long, Rect>() }
     var crumple by remember { mutableStateOf<CrumpleRequest?>(null) }
+    var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
+    var shareText by remember { mutableStateOf("") }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
     var reminderTarget by remember { mutableStateOf<Note?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
@@ -345,6 +351,17 @@ fun NotesScreen(
         )
     }
 
+    // Papierflieger-Animation → Android-Teilen-Auswahl
+    shareRequest?.let { req ->
+        PaperPlaneOverlay(
+            request = req,
+            onFinished = {
+                context.sharePlainText(shareText)
+                shareRequest = null
+            },
+        )
+    }
+
     // Stimmungs-/Pin-/Lösch-Sheet
     moodTarget?.let { target ->
         val targetSurface = target.mood.cardSurface()
@@ -363,6 +380,17 @@ fun NotesScreen(
             onSetReminder = {
                 moodTarget = null
                 reminderTarget = target
+            },
+            onShare = {
+                val bounds = cardBounds[target.id]
+                val text = target.toShareText()
+                moodTarget = null
+                if (bounds != null) {
+                    shareText = text
+                    shareRequest = PaperPlaneRequest(target.id, bounds, targetSurface)
+                } else {
+                    context.sharePlainText(text)
+                }
             },
             onDelete = {
                 val bounds = cardBounds[target.id]

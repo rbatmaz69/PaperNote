@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PushPin
@@ -43,6 +44,7 @@ fun MoodPickerSheet(
     onPick: (MoodCategory) -> Unit,
     onTogglePin: () -> Unit,
     onSetReminder: () -> Unit,
+    onShare: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -130,6 +132,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (hasReminder) "Erinnerung ändern" else "Erinnerung setzen",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Als Papierflieger teilen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .clickable { onShare() }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.Send,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = "Als Papierflieger teilen",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

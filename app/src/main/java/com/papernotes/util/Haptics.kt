@@ -41,6 +41,14 @@ class PaperHaptics(
         val amplitudes = intArrayOf(0, 60, 0, 90, 0, 120, 0, 180)
         v.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
+
+    /** Papierflieger-Wurf: zwei knappe Falt-Ticks, dann ein leiser "Whoosh"-Abflug. */
+    fun fold() {
+        val v = vibrator ?: return
+        val timings = longArrayOf(0, 10, 12, 10, 20, 36)
+        val amplitudes = intArrayOf(0, 110, 0, 110, 0, 70)
+        v.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    }
 }
 
 @Composable

@@ -43,7 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.ImeAction
@@ -55,13 +58,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.cardSurface
 import com.papernotes.domain.model.earAccent
+import com.papernotes.domain.toShareText
 import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.DogEar
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.PaperBackground
+import com.papernotes.ui.components.PaperPlaneOverlay
+import com.papernotes.ui.components.PaperPlaneRequest
 import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.util.findActivity
 import com.papernotes.util.rememberPaperHaptics
+import com.papernotes.util.sharePlainText
 
 /**
  * "Clean Writing Mode": Beim Öffnen blenden die System-Leisten sanft aus – es bleibt nur
@@ -105,8 +112,12 @@ fun EditorScreen(
     var showMood by remember { mutableStateOf(false) }
     var showReminder by remember { mutableStateOf(false) }
     var confettiKey by remember { mutableStateOf<Int?>(null) }
+    var editorBounds by remember { mutableStateOf(Rect.Zero) }
+    var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
+    var shareText by remember { mutableStateOf("") }
     val bodyFocus = remember { FocusRequester() }
     val ink = MaterialTheme.colorScheme.onBackground
+    val noteSurface = note.mood.cardSurface()
 
     // Konfetti, wenn der letzte offene Eintrag abgehakt wurde
     LaunchedEffect(celebration) {
@@ -150,6 +161,7 @@ fun EditorScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onGloballyPositioned { editorBounds = it.boundsInRoot() }
                     .sharedBounds(
                         rememberSharedContentState(key = "note-$noteId"),
                         animatedVisibilityScope = animatedScope,
@@ -268,6 +280,17 @@ fun EditorScreen(
             }
         }
 
+        // Papierflieger-Animation → Android-Teilen-Auswahl
+        shareRequest?.let { req ->
+            PaperPlaneOverlay(
+                request = req,
+                onFinished = {
+                    context.sharePlainText(shareText)
+                    shareRequest = null
+                },
+            )
+        }
+
         if (showMood) {
             MoodPickerSheet(
                 selected = note.mood,
@@ -286,6 +309,16 @@ fun EditorScreen(
                 onSetReminder = {
                     showMood = false
                     showReminder = true
+                },
+                onShare = {
+                    showMood = false
+                    val text = note.toShareText()
+                    if (editorBounds != Rect.Zero) {
+                        shareText = text
+                        shareRequest = PaperPlaneRequest(note.id, editorBounds, noteSurface)
+                    } else {
+                        context.sharePlainText(text)
+                    }
                 },
                 onDelete = {
                     showMood = false
