@@ -49,6 +49,14 @@ class PaperHaptics(
         val amplitudes = intArrayOf(0, 110, 0, 110, 0, 70)
         v.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
+
+    /** Stempel-"Thunk": ein satter, kurzer Aufschlag mit knappem Nachklang. */
+    fun stamp() {
+        val v = vibrator ?: return
+        val timings = longArrayOf(0, 24, 14, 16)
+        val amplitudes = intArrayOf(0, 255, 0, 90)
+        v.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    }
 }
 
 @Composable

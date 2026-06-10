@@ -2,6 +2,8 @@ package com.papernotes.domain.model
 
 import com.papernotes.domain.ChecklistCodec
 import com.papernotes.domain.ChecklistItem
+import com.papernotes.domain.StampCodec
+import com.papernotes.domain.StampMotif
 
 /** Domänenmodell einer Notiz (UI-/Logik-Schicht, entkoppelt von Room). */
 data class Note(
@@ -37,4 +39,18 @@ data class Note(
 
     fun withChecklist(items: List<ChecklistItem>): Note =
         copy(body = ChecklistCodec.serialize(items))
+
+    /** Gestempelte Tage (leer, außer bei Stempelkarten). */
+    val stamps: Set<Long>
+        get() = if (type == NoteType.STAMPCARD) StampCodec.parse(body) else emptySet()
+
+    /** Gewähltes Stempel-Motiv (nur für Stempelkarten relevant). */
+    val stampMotif: StampMotif
+        get() = if (type == NoteType.STAMPCARD) StampCodec.motif(body) else StampMotif.CHECK
+
+    fun withStamps(days: Set<Long>): Note =
+        copy(body = StampCodec.serialize(days, stampMotif))
+
+    fun withStampMotif(motif: StampMotif): Note =
+        copy(body = StampCodec.serialize(stamps, motif))
 }

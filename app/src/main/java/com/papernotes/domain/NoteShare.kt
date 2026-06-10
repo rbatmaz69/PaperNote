@@ -2,6 +2,7 @@ package com.papernotes.domain
 
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
+import java.time.LocalDate
 
 private const val DONE_GLYPH = "☑" // ☑
 private const val OPEN_GLYPH = "☐" // ☐
@@ -21,6 +22,10 @@ fun Note.toShareText(): String {
             checklist.joinToString("\n") { item ->
                 (if (item.checked) DONE_GLYPH else OPEN_GLYPH) + " " + item.text
             }
+        NoteType.STAMPCARD -> {
+            val today = LocalDate.now().toEpochDay()
+            "Strähne: ${StampCodec.streak(stamps, today)} Tage · ${StampCodec.total(stamps)}× gestempelt"
+        }
         NoteType.TEXT -> body.trim()
     }
 

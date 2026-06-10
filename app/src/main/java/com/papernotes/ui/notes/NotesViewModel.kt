@@ -5,19 +5,23 @@ import androidx.lifecycle.viewModelScope
 import com.papernotes.data.delight.DailyDelightProvider
 import com.papernotes.data.prefs.DelightPreferences
 import com.papernotes.data.repository.NoteRepository
+import com.papernotes.domain.StampCodec
 import com.papernotes.domain.model.DailyDelight
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteLink
 import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -155,6 +159,25 @@ class NotesViewModel @Inject constructor(
     fun linkNotes(a: Long, b: Long) = viewModelScope.launch { repository.linkNotes(a, b) }
 
     fun unlinkNotes(a: Long, b: Long) = viewModelScope.launch { repository.unlinkNotes(a, b) }
+
+    /** Einmal-Event (Notiz-Id), wenn ein Stempel die Strähne auf eine 7er-Marke hebt. */
+    private val _stampMilestone = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    val stampMilestone: SharedFlow<Long> = _stampMilestone
+
+    /** Setzt/entfernt den Stempel für [day] einer Stempelkarte direkt aus dem Grid. */
+    fun toggleStamp(note: Note, day: Long) = viewModelScope.launch {
+        val days = note.stamps.toMutableSet()
+        val nowStamped = if (day in days) {
+            days.remove(day); false
+        } else {
+            days.add(day); true
+        }
+        repository.save(note.withStamps(days))
+        if (nowStamped) {
+            val streak = StampCodec.streak(days, LocalDate.now().toEpochDay())
+            if (streak > 0 && streak % 7L == 0L) _stampMilestone.tryEmit(note.id)
+        }
+    }
 
     fun archive(id: Long) = viewModelScope.launch { repository.archive(id) }
 

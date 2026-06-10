@@ -44,6 +44,7 @@ import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.cardSurface
 import com.papernotes.domain.model.earAccent
+import java.time.LocalDate
 
 /**
  * Eine Notiz als schwebendes Stück Papier: weicher, dynamischer Schatten (reagiert auf
@@ -59,6 +60,7 @@ fun NoteCard(
     modifier: Modifier = Modifier,
     dimmed: Boolean = false,
     reminderDue: Boolean = false,
+    onToggleStampDay: ((Long) -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -148,10 +150,17 @@ fun NoteCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (note.type == NoteType.CHECKLIST) {
-                    ChecklistPreview(note)
-                } else {
-                    Text(
+                when (note.type) {
+                    NoteType.CHECKLIST -> ChecklistPreview(note)
+                    NoteType.STAMPCARD -> StampCard(
+                        stamps = note.stamps,
+                        motif = note.stampMotif,
+                        today = LocalDate.now().toEpochDay(),
+                        accent = accent,
+                        onToggleDay = { day -> onToggleStampDay?.invoke(day) },
+                        compact = true,
+                    )
+                    NoteType.TEXT -> Text(
                         text = note.preview,
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (note.body.isBlank()) {

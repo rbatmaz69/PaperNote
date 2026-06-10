@@ -6,9 +6,12 @@ import com.papernotes.data.prefs.DelightPreferences
 import com.papernotes.data.repository.NoteRepository
 import com.papernotes.domain.ChecklistCodec
 import com.papernotes.domain.ChecklistItem
+import com.papernotes.domain.StampCodec
+import com.papernotes.domain.StampMotif
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
+import java.time.LocalDate
 import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -221,6 +224,33 @@ class EditorViewModel @Inject constructor(
 
     fun consumeFocusRequest() {
         _focusRequest.value = null
+    }
+
+    // --- Stempelkarte ---
+
+    /**
+     * Setzt/entfernt den Stempel für [day] (Epoch-Tag) – auch für vergangene Tage zum
+     * Nachstempeln. Konfetti, wenn ein neuer Stempel die aktuelle Strähne auf eine 7er-Marke hebt.
+     */
+    fun toggleStamp(day: Long) {
+        val days = _note.value.stamps.toMutableSet()
+        val nowStamped = if (day in days) {
+            days.remove(day); false
+        } else {
+            days.add(day); true
+        }
+        _note.update { it.withStamps(days) }
+        scheduleSave()
+        if (nowStamped) {
+            val streak = StampCodec.streak(days, LocalDate.now().toEpochDay())
+            if (streak > 0 && streak % 7L == 0L) _celebration.update { it + 1 }
+        }
+    }
+
+    /** Wählt das Stempel-Motiv der Karte (bewahrt die bereits gestempelten Tage). */
+    fun setStampMotif(motif: StampMotif) {
+        _note.update { it.withStampMotif(motif) }
+        scheduleSave()
     }
 
     // --- Roter Faden ---

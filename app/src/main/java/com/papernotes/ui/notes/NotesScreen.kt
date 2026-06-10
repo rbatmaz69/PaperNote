@@ -83,6 +83,7 @@ import com.papernotes.domain.model.cardSurface
 import com.papernotes.domain.toShareText
 import com.papernotes.ui.components.AddFab
 import com.papernotes.ui.components.ArchiveDrawerSheet
+import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.CrumpleOverlay
 import com.papernotes.ui.components.CrumpleRequest
 import com.papernotes.ui.components.DrawerHandle
@@ -175,6 +176,16 @@ fun NotesScreen(
     // ändern – nicht bei jedem 30-s-Tick oder jeder Bounds-Aktualisierung.
     val dimmedIds by remember {
         derivedStateOf { state.notes.filter { it.dimmed }.map { it.note.id }.toSet() }
+    }
+
+    // Stempel-Meilenstein → Konfetti.
+    var stampConfettiKey by remember { mutableIntStateOf(0) }
+    var showStampConfetti by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        viewModel.stampMilestone.collect {
+            stampConfettiKey++
+            showStampConfetti = true
+        }
     }
     var reminderTarget by remember { mutableStateOf<Note?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
@@ -306,6 +317,7 @@ fun NotesScreen(
                                             onClick = { onOpenNote(note.id) },
                                             onToggleDogEar = { viewModel.toggleDogEar(note) },
                                             onPickMood = { moodTarget = note },
+                                            onToggleStampDay = { day -> viewModel.toggleStamp(note, day) },
                                             modifier = Modifier
                                                 .graphicsLayer {
                                                     val a = appear.value
@@ -433,6 +445,11 @@ fun NotesScreen(
                 shareRequest = null
             },
         )
+    }
+
+    // Stempel-Meilenstein: Konfetti über dem Grid
+    if (showStampConfetti) {
+        ConfettiBurst(trigger = stampConfettiKey, onFinished = { showStampConfetti = false })
     }
 
     // Stimmungs-/Pin-/Lösch-Sheet

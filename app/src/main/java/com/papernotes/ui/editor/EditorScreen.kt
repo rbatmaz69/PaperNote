@@ -77,7 +77,10 @@ import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
 import com.papernotes.ui.components.ReminderSheet
+import com.papernotes.ui.components.StampCard
+import com.papernotes.ui.components.StampMotifPicker
 import com.papernotes.ui.components.paperPress
+import java.time.LocalDate
 import com.papernotes.util.findActivity
 import com.papernotes.util.rememberPaperHaptics
 import com.papernotes.util.sharePlainText
@@ -244,8 +247,8 @@ fun EditorScreen(
                     )
                 }
 
-                if (note.type == NoteType.CHECKLIST) {
-                    ChecklistEditor(
+                when (note.type) {
+                    NoteType.CHECKLIST -> ChecklistEditor(
                         items = items,
                         focusRequestId = focusRequestId,
                         accentColor = note.mood.earAccent(),
@@ -265,8 +268,39 @@ fun EditorScreen(
                             )
                         },
                     )
-                } else {
-                    Column(
+
+                    NoteType.STAMPCARD -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp),
+                    ) {
+                        TitleField(
+                            title = note.title,
+                            onTitleChange = viewModel::onTitleChange,
+                            onNext = {},
+                        )
+                        StampMotifPicker(
+                            selected = note.stampMotif,
+                            accent = note.mood.earAccent(),
+                            onPick = {
+                                haptics.tick()
+                                viewModel.setStampMotif(it)
+                            },
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        StampCard(
+                            stamps = note.stamps,
+                            motif = note.stampMotif,
+                            today = LocalDate.now().toEpochDay(),
+                            accent = note.mood.earAccent(),
+                            onToggleDay = viewModel::toggleStamp,
+                            compact = false,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 48.dp),
+                        )
+                    }
+
+                    NoteType.TEXT -> Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())

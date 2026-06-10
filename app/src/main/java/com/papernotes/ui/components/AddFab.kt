@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Approval
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -87,6 +88,17 @@ fun AddFab(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                MiniAction(
+                    label = "Stempelkarte",
+                    icon = { tint ->
+                        Icon(Icons.Rounded.Approval, null, tint = tint, modifier = Modifier.size(20.dp))
+                    },
+                    onClick = {
+                        haptics.tap()
+                        onExpandedChange(false)
+                        onCreate(NoteType.STAMPCARD)
+                    },
+                )
                 MiniAction(
                     label = "Checkliste",
                     icon = { tint ->
