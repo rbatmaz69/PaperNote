@@ -1,8 +1,12 @@
 package com.papernotes.ui.components
 
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -15,8 +19,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,9 +57,27 @@ fun NoteCard(
     onPickMood: () -> Unit,
     modifier: Modifier = Modifier,
     dimmed: Boolean = false,
+    reminderDue: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+
+    // Papier-Flattern: zarte, dauerhafte Wackelbewegung, solange die Erinnerung fällig ist.
+    // Die Werte werden erst in der graphicsLayer (Draw-Phase) gelesen – nur fällige Karten
+    // zeichnen pro Frame neu, der Rest bleibt von der Endlos-Animation unberührt.
+    val flutter = rememberInfiniteTransition(label = "flutter")
+    val flutterRotation = flutter.animateFloat(
+        initialValue = -1.2f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(tween(620), RepeatMode.Reverse),
+        label = "flutterRotation",
+    )
+    val flutterShift = flutter.animateFloat(
+        initialValue = -3f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
+        label = "flutterShift",
+    )
 
     val elevation by animateDpAsState(
         targetValue = if (pressed) 2.dp else 10.dp,
@@ -80,6 +104,10 @@ fun NoteCard(
                 scaleX = scale
                 scaleY = scale
                 alpha = inkAlpha
+                if (reminderDue) {
+                    rotationZ = flutterRotation.value
+                    translationX = flutterShift.value
+                }
             },
     ) {
         Box(
@@ -148,7 +176,37 @@ fun NoteCard(
                     .offset(y = (-9).dp),
             )
         }
+
+        // Papier-Reiter am linken Rand: ruhiger Hinweis auf eine gesetzte Erinnerung.
+        if (note.hasReminder) {
+            ReminderTab(
+                color = note.mood.earAccent(),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = (-5).dp),
+            )
+        }
     }
+}
+
+/** Kleiner aufgeklebter Papier-Reiter (wie ein Lesezeichen) für Notizen mit Erinnerung. */
+@Composable
+private fun ReminderTab(color: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 3.dp,
+                shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp),
+                clip = false,
+                spotColor = Color.Black.copy(alpha = 0.2f),
+            )
+            .background(
+                color = color,
+                shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp),
+            )
+            .width(10.dp)
+            .height(34.dp),
+    )
 }
 
 /** Bis zu 5 Mini-Zeilen + Fortschritt „3/5" (read-only; Tap öffnet den Editor). */

@@ -22,7 +22,10 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PaperNotesDatabase =
         Room.databaseBuilder(context, PaperNotesDatabase::class.java, "paper_notes.db")
-            .addMigrations(PaperNotesDatabase.MIGRATION_1_2)
+            .addMigrations(
+                PaperNotesDatabase.MIGRATION_1_2,
+                PaperNotesDatabase.MIGRATION_2_3,
+            )
             .build()
 
     @Provides

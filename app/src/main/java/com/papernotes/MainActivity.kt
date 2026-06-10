@@ -12,6 +12,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.papernotes.reminder.ReminderReceiver
 import com.papernotes.ui.navigation.PaperNotesNavGraph
 import com.papernotes.ui.theme.PaperNotesTheme
 import com.papernotes.ui.theme.ThemeViewModel
@@ -23,6 +24,12 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Per Erinnerungs-Notification geöffnet? Dann direkt diese Notiz anzeigen.
+        val initialNoteId = intent
+            ?.getLongExtra(ReminderReceiver.EXTRA_NOTE_ID, 0L)
+            ?.takeIf { it != 0L }
+
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val theme by themeViewModel.theme.collectAsStateWithLifecycle()
@@ -37,7 +44,7 @@ class MainActivity : ComponentActivity() {
             }
 
             PaperNotesTheme(theme = theme) {
-                PaperNotesNavGraph()
+                PaperNotesNavGraph(initialNoteId = initialNoteId)
             }
         }
     }

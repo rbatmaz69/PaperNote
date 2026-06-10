@@ -8,6 +8,7 @@ import com.papernotes.data.repository.NoteRepository
 import com.papernotes.domain.model.DailyDelight
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
+import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +42,7 @@ data class NotesUiState(
 class NotesViewModel @Inject constructor(
     private val repository: NoteRepository,
     private val delightPreferences: DelightPreferences,
+    private val reminderScheduler: ReminderScheduler,
     delightProvider: DailyDelightProvider,
 ) : ViewModel() {
 
@@ -125,6 +127,16 @@ class NotesViewModel @Inject constructor(
 
     fun togglePin(note: Note) = viewModelScope.launch {
         repository.setPinned(note.id, !note.pinned)
+    }
+
+    fun setReminder(note: Note, at: Long?) = viewModelScope.launch {
+        repository.setReminder(note.id, at)
+        if (at != null) {
+            reminderScheduler.schedule(note.id, note.title, at)
+        } else {
+            reminderScheduler.cancel(note.id)
+            reminderScheduler.dismissNotification(note.id)
+        }
     }
 
     fun archive(id: Long) = viewModelScope.launch { repository.archive(id) }

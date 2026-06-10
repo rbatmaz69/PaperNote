@@ -46,6 +46,12 @@ interface NoteDao {
     @Query("UPDATE notes SET dogEarFolded = :folded, mood = :mood, updatedAt = :now WHERE id = :id")
     suspend fun setDogEar(id: Long, folded: Boolean, mood: String, now: Long)
 
+    @Query("UPDATE notes SET reminderAt = :at, updatedAt = :now WHERE id = :id")
+    suspend fun setReminder(id: Long, at: Long?, now: Long)
+
+    @Query("SELECT * FROM notes WHERE reminderAt IS NOT NULL AND deletedAt IS NULL")
+    suspend fun notesWithReminders(): List<NoteEntity>
+
     @Query("UPDATE notes SET deletedAt = :now WHERE id = :id")
     suspend fun moveToTrash(id: Long, now: Long)
 

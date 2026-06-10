@@ -15,10 +15,18 @@ data class Note(
     val archived: Boolean = false,
     /** Zeitstempel der Knüll-Löschung; null = nicht im Papierkorb. */
     val deletedAt: Long? = null,
+    /** Geplante Erinnerungszeit (Epoch-Millis); null = keine Erinnerung. */
+    val reminderAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
     val isBlank: Boolean get() = title.isBlank() && body.isBlank()
+
+    /** true, wenn eine Erinnerung gesetzt ist (Papier-Reiter als Vorab-Hinweis). */
+    val hasReminder: Boolean get() = reminderAt != null
+
+    /** true, wenn die Erinnerung zu [now] fällig ist (löst das Papier-Flattern aus). */
+    fun isReminderDue(now: Long): Boolean = reminderAt?.let { it <= now } == true
 
     val preview: String
         get() = body.trim().ifBlank { "—" }

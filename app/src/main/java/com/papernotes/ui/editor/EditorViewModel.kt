@@ -9,6 +9,7 @@ import com.papernotes.domain.ChecklistItem
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
+import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -30,6 +31,7 @@ data class EditableChecklistItem(
 class EditorViewModel @Inject constructor(
     private val repository: NoteRepository,
     private val delightPreferences: DelightPreferences,
+    private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
 
     private val _note = MutableStateFlow(Note())
@@ -76,6 +78,14 @@ class EditorViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getNote(id)?.let { note ->
                 if (loadedSession != session) return@launch
+                // Öffnen = Quittieren: fällige Erinnerung beenden (Flattern + Notification weg).
+                if (note.isReminderDue(System.currentTimeMillis())) {
+                    reminderScheduler.dismissNotification(id)
+                    repository.setReminder(id, null)
+                    _note.value = note.copy(reminderAt = null)
+                    _items.value = note.checklist.map { it.toEditable() }
+                    return@let
+                }
                 _note.value = note
                 _items.value = note.checklist.map { it.toEditable() }
             }
@@ -105,6 +115,26 @@ class EditorViewModel @Inject constructor(
     fun togglePin() {
         _note.update { it.copy(pinned = !it.pinned) }
         scheduleSave()
+    }
+
+    /**
+     * Setzt ([at] != null) oder entfernt ([at] == null) die Erinnerung. Speichert sofort,
+     * damit eine frische Notiz eine id bekommt, und plant/entfernt dann den exakten Alarm.
+     */
+    fun setReminder(at: Long?) {
+        saveJob?.cancel()
+        _note.update { it.copy(reminderAt = at) }
+        viewModelScope.launch {
+            val snapshot = _note.value
+            val id = repository.save(snapshot)
+            if (snapshot.id == 0L) _note.update { if (it.id == 0L) it.copy(id = id) else it }
+            if (at != null) {
+                reminderScheduler.schedule(id, snapshot.title, at)
+            } else {
+                reminderScheduler.cancel(id)
+                reminderScheduler.dismissNotification(id)
+            }
+        }
     }
 
     // --- Checkliste ---

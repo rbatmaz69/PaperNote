@@ -17,6 +17,7 @@ data class NoteEntity(
     val pinned: Boolean,
     val archived: Boolean,
     val deletedAt: Long?,
+    val reminderAt: Long?,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -31,6 +32,7 @@ fun NoteEntity.toDomain(): Note = Note(
     pinned = pinned,
     archived = archived,
     deletedAt = deletedAt,
+    reminderAt = reminderAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -45,6 +47,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     pinned = pinned,
     archived = archived,
     deletedAt = deletedAt,
+    reminderAt = reminderAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

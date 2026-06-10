@@ -28,9 +28,10 @@ private const val NEW_NOTE_ID = 0L
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun PaperNotesNavGraph() {
+fun PaperNotesNavGraph(initialNoteId: Long? = null) {
     // null = Grid, sonst die zu bearbeitende Notiz-id (0 = neu, Typ via newNoteType).
-    var selectedNoteId by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Per Notification-Tap geöffnet: direkt mit der betreffenden Notiz starten.
+    var selectedNoteId by rememberSaveable { mutableStateOf(initialNoteId) }
     var newNoteType by rememberSaveable { mutableStateOf(NoteType.TEXT.name) }
     // Steigt bei jedem Öffnen → erzwingt frischen Editor-Zustand (siehe EditorViewModel.load).
     var editorSession by rememberSaveable { mutableIntStateOf(0) }

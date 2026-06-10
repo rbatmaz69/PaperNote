@@ -1,6 +1,11 @@
 package com.papernotes.ui.editor
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -39,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -53,6 +59,7 @@ import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.DogEar
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.PaperBackground
+import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.util.findActivity
 import com.papernotes.util.rememberPaperHaptics
 
@@ -74,6 +81,20 @@ fun EditorScreen(
 ) {
     val haptics = rememberPaperHaptics()
     val view = LocalView.current
+    val context = LocalContext.current
+
+    val notifPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* Ergebnis egal: Alarm läuft, Notification erscheint erst nach Erteilung. */ }
+
+    fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     LaunchedEffect(session) { viewModel.load(noteId, newType, session) }
     val note by viewModel.note.collectAsStateWithLifecycle()
@@ -82,6 +103,7 @@ fun EditorScreen(
     val focusRequestId by viewModel.focusRequest.collectAsStateWithLifecycle()
 
     var showMood by remember { mutableStateOf(false) }
+    var showReminder by remember { mutableStateOf(false) }
     var confettiKey by remember { mutableStateOf<Int?>(null) }
     val bodyFocus = remember { FocusRequester() }
     val ink = MaterialTheme.colorScheme.onBackground
@@ -250,6 +272,7 @@ fun EditorScreen(
             MoodPickerSheet(
                 selected = note.mood,
                 pinned = note.pinned,
+                hasReminder = note.hasReminder,
                 onPick = {
                     haptics.tick()
                     viewModel.setMood(it)
@@ -260,12 +283,34 @@ fun EditorScreen(
                     viewModel.togglePin()
                     showMood = false
                 },
+                onSetReminder = {
+                    showMood = false
+                    showReminder = true
+                },
                 onDelete = {
                     showMood = false
                     haptics.crumple()
                     viewModel.moveToTrash { onBack() }
                 },
                 onDismiss = { showMood = false },
+            )
+        }
+
+        if (showReminder) {
+            ReminderSheet(
+                currentReminderAt = note.reminderAt,
+                onPick = { at ->
+                    haptics.tick()
+                    viewModel.setReminder(at)
+                    ensureNotificationPermission()
+                    showReminder = false
+                },
+                onClear = {
+                    haptics.tap()
+                    viewModel.setReminder(null)
+                    showReminder = false
+                },
+                onDismiss = { showReminder = false },
             )
         }
     }

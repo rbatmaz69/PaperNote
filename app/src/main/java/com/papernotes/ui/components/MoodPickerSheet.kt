@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -38,8 +39,10 @@ import com.papernotes.ui.theme.Terracotta
 fun MoodPickerSheet(
     selected: MoodCategory,
     pinned: Boolean,
+    hasReminder: Boolean,
     onPick: (MoodCategory) -> Unit,
     onTogglePin: () -> Unit,
+    onSetReminder: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -102,6 +105,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (pinned) "Washi-Tape lösen" else "Mit Washi-Tape anheften",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Erinnerung setzen / ändern
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .clickable { onSetReminder() }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.NotificationsActive,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (hasReminder) "Erinnerung ändern" else "Erinnerung setzen",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

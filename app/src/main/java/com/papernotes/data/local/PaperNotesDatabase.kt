@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [NoteEntity::class], version = 2, exportSchema = false)
+@Database(entities = [NoteEntity::class], version = 3, exportSchema = false)
 abstract class PaperNotesDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
 
@@ -16,6 +16,13 @@ abstract class PaperNotesDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE notes ADD COLUMN type TEXT NOT NULL DEFAULT 'TEXT'")
                 db.execSQL("ALTER TABLE notes ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE notes ADD COLUMN deletedAt INTEGER")
+            }
+        }
+
+        /** v3: Erinnerungszeit (Papier-Flattern). */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN reminderAt INTEGER")
             }
         }
     }

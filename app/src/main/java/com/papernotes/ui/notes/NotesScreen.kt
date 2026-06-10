@@ -1,6 +1,11 @@
 package com.papernotes.ui.notes
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -42,12 +47,15 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -70,6 +78,7 @@ import com.papernotes.ui.components.MoodFilterRow
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.NoteCard
 import com.papernotes.ui.components.PaperBackground
+import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.ui.components.TeabagPull
 import com.papernotes.ui.components.ThemePickerSheet
 import com.papernotes.ui.theme.ThemeViewModel
@@ -87,6 +96,29 @@ fun NotesScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentTheme by themeViewModel.theme.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // Leichter Zeit-Ticker: lässt fällige Erinnerungen live ins „Flattern" übergehen.
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(30_000)
+        }
+    }
+
+    val notifPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* Ergebnis egal: Alarm läuft, Notification erscheint erst nach Erteilung. */ }
+
+    fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     var columns by remember { mutableIntStateOf(2) }
     var zoomAccum by remember { mutableFloatStateOf(1f) }
@@ -110,6 +142,7 @@ fun NotesScreen(
     val cardBounds = remember { mutableMapOf<Long, Rect>() }
     var crumple by remember { mutableStateOf<CrumpleRequest?>(null) }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
+    var reminderTarget by remember { mutableStateOf<Note?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
     var themeSheetOpen by remember { mutableStateOf(false) }
@@ -205,6 +238,7 @@ fun NotesScreen(
                                         NoteCard(
                                             note = note,
                                             dimmed = gridNote.dimmed,
+                                            reminderDue = note.isReminderDue(now),
                                             onClick = { onOpenNote(note.id) },
                                             onToggleDogEar = { viewModel.toggleDogEar(note) },
                                             onPickMood = { moodTarget = note },
@@ -317,6 +351,7 @@ fun NotesScreen(
         MoodPickerSheet(
             selected = target.mood,
             pinned = target.pinned,
+            hasReminder = target.hasReminder,
             onPick = { mood ->
                 viewModel.setMood(target, mood)
                 moodTarget = null
@@ -324,6 +359,10 @@ fun NotesScreen(
             onTogglePin = {
                 viewModel.togglePin(target)
                 moodTarget = null
+            },
+            onSetReminder = {
+                moodTarget = null
+                reminderTarget = target
             },
             onDelete = {
                 val bounds = cardBounds[target.id]
@@ -335,6 +374,23 @@ fun NotesScreen(
                 }
             },
             onDismiss = { moodTarget = null },
+        )
+    }
+
+    // Erinnerungs-Sheet (vom Grid-Long-Press)
+    reminderTarget?.let { target ->
+        ReminderSheet(
+            currentReminderAt = target.reminderAt,
+            onPick = { at ->
+                viewModel.setReminder(target, at)
+                ensureNotificationPermission()
+                reminderTarget = null
+            },
+            onClear = {
+                viewModel.setReminder(target, null)
+                reminderTarget = null
+            },
+            onDismiss = { reminderTarget = null },
         )
     }
 
