@@ -67,6 +67,8 @@ class NotesViewModel @Inject constructor(
 
     init {
         viewModelScope.launch { repository.purgeOldTrash() }
+        // Abgelaufene Notizen (während die App zu war) beim Start in den Papierkorb räumen.
+        viewModelScope.launch { repository.purgeExpired() }
     }
 
     private val gridState = combine(
@@ -162,6 +164,10 @@ class NotesViewModel @Inject constructor(
             reminderScheduler.cancel(note.id)
             reminderScheduler.dismissNotification(note.id)
         }
+    }
+
+    fun setExpiry(note: Note, at: Long?) = viewModelScope.launch {
+        repository.setExpiry(note.id, at)
     }
 
     fun linkNotes(a: Long, b: Long) = viewModelScope.launch { repository.linkNotes(a, b) }

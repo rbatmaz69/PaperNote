@@ -10,6 +10,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -34,8 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +65,7 @@ fun NoteCard(
     modifier: Modifier = Modifier,
     dimmed: Boolean = false,
     reminderDue: Boolean = false,
+    now: Long = System.currentTimeMillis(),
     onToggleStampDay: ((Long) -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -104,6 +110,13 @@ fun NoteCard(
     val surface by animateColorAsState(note.mood.cardSurface(), tween(320), label = "cardSurface")
     val accent by animateColorAsState(note.mood.earAccent(), tween(320), label = "cardAccent")
 
+    // Vergängliche Notiz: je näher der Ablauf (letzte Stunde), desto stärker vergilbt das
+    // Papier und die Ecke rollt sich ein.
+    val age = note.expiresAt?.let { exp ->
+        (1f - (exp - now).toFloat() / AGING_WINDOW_MS).coerceIn(0f, 1f)
+    } ?: 0f
+    val agedSurface = lerp(surface, SEPIA, age * 0.6f)
+
     val shape = RoundedCornerShape(18.dp)
 
     Box(
@@ -128,7 +141,7 @@ fun NoteCard(
                     clip = false,
                     spotColor = Color.Black.copy(alpha = 0.25f),
                 )
-                .background(color = surface, shape = shape)
+                .background(color = agedSurface, shape = shape)
                 .clickable(
                     interactionSource = interaction,
                     indication = null,
@@ -176,6 +189,23 @@ fun NoteCard(
                         )
                     }
                 }
+
+                // Vergängliche Notiz: Rest-Zeit-Hinweis.
+                note.expiresAt?.let { exp ->
+                    Text(
+                        text = "⌛ " + remainingLabel(exp - now),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
+
+            // Eingerollte, vergilbende Ecke (wächst, je näher der Ablauf).
+            if (age > 0f) {
+                CurledCorner(
+                    age = age,
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                )
             }
 
             DogEar(
@@ -227,6 +257,57 @@ private fun ReminderTab(color: Color, modifier: Modifier = Modifier) {
             .width(10.dp)
             .height(34.dp),
     )
+}
+
+/** Zeitfenster (1 h), in dem eine vergängliche Notiz sichtbar altert. */
+private const val AGING_WINDOW_MS = 60L * 60L * 1000L
+private val SEPIA = Color(0xFFE8D7A0)
+private val PAPER_UNDERSIDE = Color(0xFFD9C48F)
+
+/**
+ * Eine sich hochrollende, vergilbte Papier-Ecke unten rechts – wächst mit [age] (0…1) und
+ * signalisiert, dass die Notiz bald verfällt.
+ */
+@Composable
+private fun CurledCorner(age: Float, modifier: Modifier = Modifier) {
+    val curl = (8f + 24f * age).dp
+    Canvas(modifier = modifier.size(curl)) {
+        val w = size.width
+        val h = size.height
+        // Unterseite des hochgerollten Eckzipfels (Dreieck unten rechts).
+        val triangle = Path().apply {
+            moveTo(w, 0f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(triangle, PAPER_UNDERSIDE)
+        // Schattenkante entlang der Falz.
+        drawLine(
+            color = Color.Black.copy(alpha = 0.18f),
+            start = Offset(0f, h),
+            end = Offset(w, 0f),
+            strokeWidth = 2.5f,
+        )
+        // Heller Glanz auf der gerollten Kante.
+        drawLine(
+            color = Color.White.copy(alpha = 0.25f),
+            start = Offset(w * 0.12f, h),
+            end = Offset(w, h * 0.12f),
+            strokeWidth = 1.5f,
+        )
+    }
+}
+
+/** Kompakter Rest-Zeit-Text: "noch 3 Tg" / "noch 5 Std" / "noch 12 Min" / "läuft ab …". */
+private fun remainingLabel(remainingMs: Long): String {
+    if (remainingMs <= 60_000L) return "läuft ab …"
+    val minutes = remainingMs / 60_000L
+    return when {
+        minutes < 60 -> "noch $minutes Min"
+        minutes < 60 * 24 -> "noch ${minutes / 60} Std"
+        else -> "noch ${minutes / (60 * 24)} Tg"
+    }
 }
 
 /** Versiegelte Notiz: Inhalt verborgen, nur Wachssiegel + zarter Hinweis. */

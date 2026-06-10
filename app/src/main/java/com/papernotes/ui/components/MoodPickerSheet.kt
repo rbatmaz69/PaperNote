@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -43,12 +44,14 @@ fun MoodPickerSheet(
     pinned: Boolean,
     hasReminder: Boolean,
     sealed: Boolean,
+    hasExpiry: Boolean,
     onPick: (MoodCategory) -> Unit,
     onTogglePin: () -> Unit,
     onSetReminder: () -> Unit,
     onLink: () -> Unit,
     onShare: () -> Unit,
     onToggleSeal: () -> Unit,
+    onSetExpiry: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -211,6 +214,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (sealed) "Siegel entfernen" else "Mit Wachs versiegeln",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Vergänglich machen / Selbstzerstörung ändern
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onSetExpiry() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.HourglassEmpty,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (hasExpiry) "Selbstzerstörung ändern" else "Vergänglich machen",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

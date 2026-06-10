@@ -87,6 +87,7 @@ import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.CrumpleOverlay
 import com.papernotes.ui.components.CrumpleRequest
 import com.papernotes.ui.components.DrawerHandle
+import com.papernotes.ui.components.ExpirySheet
 import com.papernotes.ui.components.InkSearchBar
 import com.papernotes.ui.components.MoodFilterRow
 import com.papernotes.ui.components.MoodPickerSheet
@@ -170,6 +171,7 @@ fun NotesScreen(
     var shareText by remember { mutableStateOf("") }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
     var linkTarget by remember { mutableStateOf<Note?>(null) }
+    var expiryTarget by remember { mutableStateOf<Note?>(null) }
 
     // Welche Karten schon „eingeflogen" sind – neue Notizen fallen einmalig herein.
     val introducedIds = remember { mutableStateMapOf<Long, Unit>() }
@@ -208,6 +210,22 @@ fun NotesScreen(
         if (!introSeeded && state.notes.isNotEmpty()) {
             visible.forEach { introducedIds[it] = Unit }
             introSeeded = true
+        }
+    }
+
+    // Vergängliche Notiz: läuft eine sichtbare Notiz ab, zerknüllt sie sich von selbst in den
+    // Papierkorb (über die bestehende Knüll-Animation). Die Stimmungsfläche wird hier in der
+    // Komposition ermittelt (cardSurface ist @Composable) und in den Effekt übergeben.
+    val expiring = state.notes.firstOrNull { it.note.isExpired(now) }?.note
+    val expiringSurface = expiring?.mood?.cardSurface()
+    LaunchedEffect(expiring?.id, now) {
+        val note = expiring ?: return@LaunchedEffect
+        if (crumple != null) return@LaunchedEffect
+        val bounds = cardBounds[note.id]
+        if (bounds != null && expiringSurface != null) {
+            crumple = CrumpleRequest(note.id, bounds, expiringSurface)
+        } else {
+            viewModel.moveToTrash(note.id)
         }
     }
 
@@ -318,6 +336,7 @@ fun NotesScreen(
                                             note = note,
                                             dimmed = gridNote.dimmed,
                                             reminderDue = note.isReminderDue(now),
+                                            now = now,
                                             onClick = {
                                                 if (note.sealed) {
                                                     cardBounds[note.id]?.let { b ->
@@ -483,6 +502,7 @@ fun NotesScreen(
             pinned = target.pinned,
             hasReminder = target.hasReminder,
             sealed = target.sealed,
+            hasExpiry = target.hasExpiry,
             onPick = { mood ->
                 viewModel.setMood(target, mood)
                 moodTarget = null
@@ -493,6 +513,10 @@ fun NotesScreen(
             },
             onToggleSeal = {
                 viewModel.toggleSeal(target)
+                moodTarget = null
+            },
+            onSetExpiry = {
+                expiryTarget = target
                 moodTarget = null
             },
             onSetReminder = {
@@ -541,6 +565,22 @@ fun NotesScreen(
                 reminderTarget = null
             },
             onDismiss = { reminderTarget = null },
+        )
+    }
+
+    // Selbstzerstörung: Ablaufzeit der Notiz wählen/aufheben
+    expiryTarget?.let { target ->
+        ExpirySheet(
+            currentExpiresAt = target.expiresAt,
+            onPick = { at ->
+                viewModel.setExpiry(target, at)
+                expiryTarget = null
+            },
+            onClear = {
+                viewModel.setExpiry(target, null)
+                expiryTarget = null
+            },
+            onDismiss = { expiryTarget = null },
         )
     }
 

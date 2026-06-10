@@ -27,6 +27,8 @@ interface NoteRepository {
     suspend fun setSealed(id: Long, sealed: Boolean)
     suspend fun setDogEar(id: Long, folded: Boolean, mood: MoodCategory)
     suspend fun setReminder(id: Long, at: Long?)
+    suspend fun setExpiry(id: Long, at: Long?)
+    suspend fun purgeExpired()
     suspend fun notesWithReminders(): List<Note>
     suspend fun moveToTrash(id: Long)
     suspend fun restore(id: Long)
@@ -80,6 +82,12 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun setReminder(id: Long, at: Long?) =
         dao.setReminder(id, at, System.currentTimeMillis())
+
+    override suspend fun setExpiry(id: Long, at: Long?) =
+        dao.setExpiry(id, at, System.currentTimeMillis())
+
+    override suspend fun purgeExpired() =
+        dao.purgeExpired(System.currentTimeMillis())
 
     override suspend fun notesWithReminders(): List<Note> =
         dao.notesWithReminders().map { it.toDomain() }

@@ -21,6 +21,8 @@ data class Note(
     val deletedAt: Long? = null,
     /** Geplante Erinnerungszeit (Epoch-Millis); null = keine Erinnerung. */
     val reminderAt: Long? = null,
+    /** Ablaufzeit (Epoch-Millis); null = beständig. Zur Zeit zerknüllt sich die Notiz selbst. */
+    val expiresAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
@@ -31,6 +33,12 @@ data class Note(
 
     /** true, wenn die Erinnerung zu [now] fällig ist (löst das Papier-Flattern aus). */
     fun isReminderDue(now: Long): Boolean = reminderAt?.let { it <= now } == true
+
+    /** true, wenn eine Ablaufzeit gesetzt ist (vergängliche Notiz). */
+    val hasExpiry: Boolean get() = expiresAt != null
+
+    /** true, wenn die Notiz zu [now] abgelaufen ist (zerknüllt sich dann selbst). */
+    fun isExpired(now: Long): Boolean = expiresAt?.let { it <= now } == true
 
     val preview: String
         get() = body.trim().ifBlank { "—" }

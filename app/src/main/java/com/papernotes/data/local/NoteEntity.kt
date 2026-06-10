@@ -19,6 +19,7 @@ data class NoteEntity(
     val sealed: Boolean,
     val deletedAt: Long?,
     val reminderAt: Long?,
+    val expiresAt: Long?,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -35,6 +36,7 @@ fun NoteEntity.toDomain(): Note = Note(
     sealed = sealed,
     deletedAt = deletedAt,
     reminderAt = reminderAt,
+    expiresAt = expiresAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -51,6 +53,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     sealed = sealed,
     deletedAt = deletedAt,
     reminderAt = reminderAt,
+    expiresAt = expiresAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

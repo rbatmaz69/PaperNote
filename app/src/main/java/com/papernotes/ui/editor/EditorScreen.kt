@@ -71,6 +71,7 @@ import com.papernotes.domain.model.earAccent
 import com.papernotes.domain.toShareText
 import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.DogEar
+import com.papernotes.ui.components.ExpirySheet
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.NoteLinkPickerSheet
@@ -129,6 +130,7 @@ fun EditorScreen(
 
     var showMood by remember { mutableStateOf(false) }
     var showReminder by remember { mutableStateOf(false) }
+    var showExpiry by remember { mutableStateOf(false) }
     var showLinkPicker by remember { mutableStateOf(false) }
     var confettiKey by remember { mutableStateOf<Int?>(null) }
     var editorBounds by remember { mutableStateOf(Rect.Zero) }
@@ -361,6 +363,7 @@ fun EditorScreen(
                 pinned = note.pinned,
                 hasReminder = note.hasReminder,
                 sealed = note.sealed,
+                hasExpiry = note.hasExpiry,
                 onPick = {
                     haptics.tick()
                     viewModel.setMood(it)
@@ -375,6 +378,10 @@ fun EditorScreen(
                     haptics.stamp()
                     viewModel.toggleSeal()
                     showMood = false
+                },
+                onSetExpiry = {
+                    showMood = false
+                    showExpiry = true
                 },
                 onSetReminder = {
                     showMood = false
@@ -418,6 +425,23 @@ fun EditorScreen(
                     showReminder = false
                 },
                 onDismiss = { showReminder = false },
+            )
+        }
+
+        if (showExpiry) {
+            ExpirySheet(
+                currentExpiresAt = note.expiresAt,
+                onPick = { at ->
+                    haptics.tick()
+                    viewModel.setExpiry(at)
+                    showExpiry = false
+                },
+                onClear = {
+                    haptics.tap()
+                    viewModel.setExpiry(null)
+                    showExpiry = false
+                },
+                onDismiss = { showExpiry = false },
             )
         }
 

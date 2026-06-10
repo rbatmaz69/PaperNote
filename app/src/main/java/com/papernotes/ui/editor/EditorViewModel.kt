@@ -154,6 +154,12 @@ class EditorViewModel @Inject constructor(
         scheduleSave()
     }
 
+    /** Setzt/entfernt die Ablaufzeit (vergängliche Notiz); rein persistiert, kein Alarm nötig. */
+    fun setExpiry(at: Long?) {
+        _note.update { it.copy(expiresAt = at) }
+        scheduleSave()
+    }
+
     /**
      * Setzt ([at] != null) oder entfernt ([at] == null) die Erinnerung. Speichert sofort,
      * damit eine frische Notiz eine id bekommt, und plant/entfernt dann den exakten Alarm.
