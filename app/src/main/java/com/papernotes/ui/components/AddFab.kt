@@ -10,7 +10,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import com.papernotes.util.rememberPaperHaptics
  * Unauffälliger, runder "+"-Button – das einzige feste UI-Element auf dem Grid.
  * Tap fächert zwei Mini-Buttons auf (Text-Notiz / Checkliste), die mit Spring herausfedern.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AddFab(
     expanded: Boolean,
@@ -146,10 +148,19 @@ fun AddFab(
                 }
                 .shadow(12.dp, CircleShape, clip = false)
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
-                .clickable(interactionSource = interaction, indication = null) {
-                    haptics.tap()
-                    onExpandedChange(!expanded)
-                },
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    onClick = {
+                        haptics.tap()
+                        onExpandedChange(!expanded)
+                    },
+                    onLongClick = {
+                        haptics.tap()
+                        onExpandedChange(false)
+                        onCreate(NoteType.TEXT)
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
