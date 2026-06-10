@@ -100,6 +100,9 @@ import com.papernotes.ui.components.paperPress
 import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.ui.components.TeabagPull
 import com.papernotes.ui.components.ThemePickerSheet
+import com.papernotes.ui.components.WaxRed
+import com.papernotes.ui.components.WaxSealBreakOverlay
+import com.papernotes.ui.components.WaxSealBreakRequest
 import com.papernotes.ui.theme.ThemeViewModel
 import com.papernotes.util.sharePlainText
 
@@ -162,6 +165,7 @@ fun NotesScreen(
     // Fäden. Snapshot-Map, damit das Faden-Overlay beim Scrollen/Zoomen live nachzeichnet.
     val cardBounds = remember { mutableStateMapOf<Long, Rect>() }
     var crumple by remember { mutableStateOf<CrumpleRequest?>(null) }
+    var sealBreak by remember { mutableStateOf<WaxSealBreakRequest?>(null) }
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
     var shareText by remember { mutableStateOf("") }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
@@ -314,7 +318,15 @@ fun NotesScreen(
                                             note = note,
                                             dimmed = gridNote.dimmed,
                                             reminderDue = note.isReminderDue(now),
-                                            onClick = { onOpenNote(note.id) },
+                                            onClick = {
+                                                if (note.sealed) {
+                                                    cardBounds[note.id]?.let { b ->
+                                                        sealBreak = WaxSealBreakRequest(note.id, b, WaxRed)
+                                                    } ?: onOpenNote(note.id)
+                                                } else {
+                                                    onOpenNote(note.id)
+                                                }
+                                            },
                                             onToggleDogEar = { viewModel.toggleDogEar(note) },
                                             onPickMood = { moodTarget = note },
                                             onToggleStampDay = { day -> viewModel.toggleStamp(note, day) },
@@ -447,6 +459,17 @@ fun NotesScreen(
         )
     }
 
+    // Wachssiegel zerspringt → öffnet die versiegelte Notiz
+    sealBreak?.let { req ->
+        WaxSealBreakOverlay(
+            request = req,
+            onFinished = {
+                onOpenNote(req.noteId)
+                sealBreak = null
+            },
+        )
+    }
+
     // Stempel-Meilenstein: Konfetti über dem Grid
     if (showStampConfetti) {
         ConfettiBurst(trigger = stampConfettiKey, onFinished = { showStampConfetti = false })
@@ -459,12 +482,17 @@ fun NotesScreen(
             selected = target.mood,
             pinned = target.pinned,
             hasReminder = target.hasReminder,
+            sealed = target.sealed,
             onPick = { mood ->
                 viewModel.setMood(target, mood)
                 moodTarget = null
             },
             onTogglePin = {
                 viewModel.togglePin(target)
+                moodTarget = null
+            },
+            onToggleSeal = {
+                viewModel.toggleSeal(target)
                 moodTarget = null
             },
             onSetReminder = {

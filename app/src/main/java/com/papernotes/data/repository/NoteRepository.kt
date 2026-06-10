@@ -24,6 +24,7 @@ interface NoteRepository {
     suspend fun archive(id: Long)
     suspend fun unarchive(id: Long)
     suspend fun setPinned(id: Long, pinned: Boolean)
+    suspend fun setSealed(id: Long, sealed: Boolean)
     suspend fun setDogEar(id: Long, folded: Boolean, mood: MoodCategory)
     suspend fun setReminder(id: Long, at: Long?)
     suspend fun notesWithReminders(): List<Note>
@@ -70,6 +71,9 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun setPinned(id: Long, pinned: Boolean) =
         dao.setPinned(id, pinned, System.currentTimeMillis())
+
+    override suspend fun setSealed(id: Long, sealed: Boolean) =
+        dao.setSealed(id, sealed, System.currentTimeMillis())
 
     override suspend fun setDogEar(id: Long, folded: Boolean, mood: MoodCategory) =
         dao.setDogEar(id, folded, mood.name, System.currentTimeMillis())

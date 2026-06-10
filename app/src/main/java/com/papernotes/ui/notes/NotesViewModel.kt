@@ -78,9 +78,13 @@ class NotesViewModel @Inject constructor(
         val trimmed = query.trim()
         GridState(
             notes = notes.map { note ->
+                // Versiegelte Notizen tauchen nicht in Suchtreffern auf (kein Inhalts-Leak),
+                // bleiben aber ohne aktive Suche normal im Grid sichtbar.
                 val matchesQuery = trimmed.isEmpty() ||
-                    note.title.contains(trimmed, ignoreCase = true) ||
-                    note.body.contains(trimmed, ignoreCase = true)
+                    (!note.sealed && (
+                        note.title.contains(trimmed, ignoreCase = true) ||
+                            note.body.contains(trimmed, ignoreCase = true)
+                        ))
                 val matchesMood = mood == null || note.mood == mood
                 GridNote(note = note, dimmed = !(matchesQuery && matchesMood))
             },
@@ -144,6 +148,10 @@ class NotesViewModel @Inject constructor(
 
     fun togglePin(note: Note) = viewModelScope.launch {
         repository.setPinned(note.id, !note.pinned)
+    }
+
+    fun toggleSeal(note: Note) = viewModelScope.launch {
+        repository.setSealed(note.id, !note.sealed)
     }
 
     fun setReminder(note: Note, at: Long?) = viewModelScope.launch {

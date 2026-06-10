@@ -150,27 +150,31 @@ fun NoteCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                when (note.type) {
-                    NoteType.CHECKLIST -> ChecklistPreview(note)
-                    NoteType.STAMPCARD -> StampCard(
-                        stamps = note.stamps,
-                        motif = note.stampMotif,
-                        today = LocalDate.now().toEpochDay(),
-                        accent = accent,
-                        onToggleDay = { day -> onToggleStampDay?.invoke(day) },
-                        compact = true,
-                    )
-                    NoteType.TEXT -> Text(
-                        text = note.preview,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (note.body.isBlank()) {
-                            MaterialTheme.colorScheme.outline
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        maxLines = 6,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                if (note.sealed) {
+                    SealedContent()
+                } else {
+                    when (note.type) {
+                        NoteType.CHECKLIST -> ChecklistPreview(note)
+                        NoteType.STAMPCARD -> StampCard(
+                            stamps = note.stamps,
+                            motif = note.stampMotif,
+                            today = LocalDate.now().toEpochDay(),
+                            accent = accent,
+                            onToggleDay = { day -> onToggleStampDay?.invoke(day) },
+                            compact = true,
+                        )
+                        NoteType.TEXT -> Text(
+                            text = note.preview,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (note.body.isBlank()) {
+                                MaterialTheme.colorScheme.outline
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            maxLines = 6,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
 
@@ -223,6 +227,23 @@ private fun ReminderTab(color: Color, modifier: Modifier = Modifier) {
             .width(10.dp)
             .height(34.dp),
     )
+}
+
+/** Versiegelte Notiz: Inhalt verborgen, nur Wachssiegel + zarter Hinweis. */
+@Composable
+private fun SealedContent() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        WaxSeal(size = 56.dp)
+        Text(
+            text = "versiegelt",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
+    }
 }
 
 /** Bis zu 5 Mini-Zeilen + Fortschritt „3/5" (read-only; Tap öffnet den Editor). */

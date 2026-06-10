@@ -15,6 +15,8 @@ data class Note(
     val dogEarFolded: Boolean = false,
     val pinned: Boolean = false,
     val archived: Boolean = false,
+    /** Mit Wachs versiegelt: Inhalt im Grid verborgen, bis das Siegel aufgebrochen wird. */
+    val sealed: Boolean = false,
     /** Zeitstempel der Knüll-Löschung; null = nicht im Papierkorb. */
     val deletedAt: Long? = null,
     /** Geplante Erinnerungszeit (Epoch-Millis); null = keine Erinnerung. */

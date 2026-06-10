@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NoteEntity::class, NoteLinkEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class PaperNotesDatabase : RoomDatabase() {
@@ -38,6 +38,13 @@ abstract class PaperNotesDatabase : RoomDatabase() {
                         "(`aId` INTEGER NOT NULL, `bId` INTEGER NOT NULL, " +
                         "PRIMARY KEY(`aId`, `bId`))",
                 )
+            }
+        }
+
+        /** v5: Wachssiegel (private Notiz – Inhalt im Grid verborgen). */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN sealed INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

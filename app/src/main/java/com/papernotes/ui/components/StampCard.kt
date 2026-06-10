@@ -432,8 +432,8 @@ private fun DrawScope.drawMotif(
         StampMotif.LEAF -> {
             val p = Path().apply {
                 moveTo(c.x, c.y - rad)
-                quadraticBezierTo(c.x + rad * 0.95f, c.y, c.x, c.y + rad)
-                quadraticBezierTo(c.x - rad * 0.95f, c.y, c.x, c.y - rad)
+                quadraticTo(c.x + rad * 0.95f, c.y, c.x, c.y + rad)
+                quadraticTo(c.x - rad * 0.95f, c.y, c.x, c.y - rad)
                 close()
             }
             drawPath(p, ink)

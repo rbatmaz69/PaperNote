@@ -57,6 +57,14 @@ class PaperHaptics(
         val amplitudes = intArrayOf(0, 255, 0, 90)
         v.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
+
+    /** Wachs-Bruch: ein einzelner, knackig-trockener Schlag. */
+    fun crack() {
+        val v = vibrator ?: return
+        val timings = longArrayOf(0, 18)
+        val amplitudes = intArrayOf(0, 220)
+        v.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    }
 }
 
 @Composable

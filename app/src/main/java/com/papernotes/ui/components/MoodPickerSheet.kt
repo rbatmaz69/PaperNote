@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Hub
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,11 +42,13 @@ fun MoodPickerSheet(
     selected: MoodCategory,
     pinned: Boolean,
     hasReminder: Boolean,
+    sealed: Boolean,
     onPick: (MoodCategory) -> Unit,
     onTogglePin: () -> Unit,
     onSetReminder: () -> Unit,
     onLink: () -> Unit,
     onShare: () -> Unit,
+    onToggleSeal: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -183,6 +186,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = "Als Papierflieger teilen",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Mit Wachs versiegeln / Siegel entfernen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onToggleSeal() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Lock,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (sealed) "Siegel entfernen" else "Mit Wachs versiegeln",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

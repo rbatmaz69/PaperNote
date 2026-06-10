@@ -360,6 +360,7 @@ fun EditorScreen(
                 selected = note.mood,
                 pinned = note.pinned,
                 hasReminder = note.hasReminder,
+                sealed = note.sealed,
                 onPick = {
                     haptics.tick()
                     viewModel.setMood(it)
@@ -368,6 +369,11 @@ fun EditorScreen(
                 onTogglePin = {
                     haptics.tap()
                     viewModel.togglePin()
+                    showMood = false
+                },
+                onToggleSeal = {
+                    haptics.stamp()
+                    viewModel.toggleSeal()
                     showMood = false
                 },
                 onSetReminder = {

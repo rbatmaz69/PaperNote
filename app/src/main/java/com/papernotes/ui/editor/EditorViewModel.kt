@@ -149,6 +149,11 @@ class EditorViewModel @Inject constructor(
         scheduleSave()
     }
 
+    fun toggleSeal() {
+        _note.update { it.copy(sealed = !it.sealed) }
+        scheduleSave()
+    }
+
     /**
      * Setzt ([at] != null) oder entfernt ([at] == null) die Erinnerung. Speichert sofort,
      * damit eine frische Notiz eine id bekommt, und plant/entfernt dann den exakten Alarm.
