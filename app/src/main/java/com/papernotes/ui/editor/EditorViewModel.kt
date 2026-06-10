@@ -6,7 +6,7 @@ import com.papernotes.data.prefs.DelightPreferences
 import com.papernotes.data.repository.NoteRepository
 import com.papernotes.domain.ChecklistCodec
 import com.papernotes.domain.ChecklistItem
-import com.papernotes.domain.SketchPoint
+import com.papernotes.domain.SketchStroke
 import com.papernotes.domain.StampCodec
 import com.papernotes.domain.StampMotif
 import com.papernotes.domain.model.MoodCategory
@@ -48,8 +48,8 @@ class EditorViewModel @Inject constructor(
     val items: StateFlow<List<EditableChecklistItem>> = _items.asStateFlow()
 
     /** Tinten-Striche der aktuellen Skizze (leer für andere Notiz-Typen). */
-    private val _strokes = MutableStateFlow<List<List<SketchPoint>>>(emptyList())
-    val strokes: StateFlow<List<List<SketchPoint>>> = _strokes.asStateFlow()
+    private val _strokes = MutableStateFlow<List<SketchStroke>>(emptyList())
+    val strokes: StateFlow<List<SketchStroke>> = _strokes.asStateFlow()
 
     /** Zähler; jede Erhöhung = ein Konfetti-Burst (letzter offener Eintrag abgehakt). */
     private val _celebration = MutableStateFlow(0)
@@ -275,24 +275,33 @@ class EditorViewModel @Inject constructor(
     // --- Skizze ---
 
     /** Hängt einen fertig gezeichneten Strich an und persistiert die Skizze im body. */
-    fun addStroke(points: List<SketchPoint>) {
-        if (points.isEmpty()) return
-        _strokes.update { it + listOf(points) }
-        _note.update { it.withSketch(_strokes.value) }
-        scheduleSave()
+    fun addStroke(stroke: SketchStroke) {
+        if (stroke.points.isEmpty()) return
+        _strokes.update { it + stroke }
+        syncSketch()
+    }
+
+    /** Entfernt die mit dem Radierer berührten Striche (Indizes der aktuellen Liste). */
+    fun eraseStrokes(indices: Set<Int>) {
+        if (indices.isEmpty()) return
+        _strokes.update { list -> list.filterIndexed { i, _ -> i !in indices } }
+        syncSketch()
     }
 
     fun undoStroke() {
         if (_strokes.value.isEmpty()) return
         _strokes.update { it.dropLast(1) }
-        _note.update { it.withSketch(_strokes.value) }
-        scheduleSave()
+        syncSketch()
     }
 
     fun clearSketch() {
         if (_strokes.value.isEmpty()) return
         _strokes.value = emptyList()
-        _note.update { it.withSketch(emptyList()) }
+        syncSketch()
+    }
+
+    private fun syncSketch() {
+        _note.update { it.withSketch(_strokes.value) }
         scheduleSave()
     }
 

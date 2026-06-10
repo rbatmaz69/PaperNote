@@ -36,8 +36,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.Undo
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -79,8 +78,11 @@ import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
+import com.papernotes.ui.components.INK_PALETTE
+import com.papernotes.ui.components.PEN_MEDIUM
 import com.papernotes.ui.components.ReminderSheet
 import com.papernotes.ui.components.SketchCanvas
+import com.papernotes.ui.components.SketchToolbar
 import com.papernotes.ui.components.StampCard
 import com.papernotes.ui.components.StampMotifPicker
 import com.papernotes.ui.components.paperPress
@@ -306,50 +308,57 @@ fun EditorScreen(
                         )
                     }
 
-                    NoteType.SKETCH -> Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 24.dp),
-                    ) {
-                        TitleField(
-                            title = note.title,
-                            onTitleChange = viewModel::onTitleChange,
-                            onNext = {},
-                        )
-                        // Werkzeuge: Rückgängig / Leeren
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    NoteType.SKETCH -> {
+                        var penColor by remember { mutableStateOf(INK_PALETTE[0]) }
+                        var penWidth by remember { mutableFloatStateOf(PEN_MEDIUM) }
+                        var eraseMode by remember { mutableStateOf(false) }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp),
                         ) {
-                            SketchTool(
-                                icon = Icons.AutoMirrored.Rounded.Undo,
-                                label = "Rückgängig",
-                                onClick = {
+                            TitleField(
+                                title = note.title,
+                                onTitleChange = viewModel::onTitleChange,
+                                onNext = {},
+                            )
+                            SketchToolbar(
+                                penColor = penColor,
+                                penWidth = penWidth,
+                                eraseMode = eraseMode,
+                                onPenColor = { penColor = it; eraseMode = false },
+                                onPenWidth = { penWidth = it; eraseMode = false },
+                                onToggleErase = {
+                                    haptics.tick()
+                                    eraseMode = !eraseMode
+                                },
+                                onUndo = {
                                     haptics.tick()
                                     viewModel.undoStroke()
                                 },
-                            )
-                            SketchTool(
-                                icon = Icons.Rounded.Delete,
-                                label = "Leeren",
-                                onClick = {
+                                onClear = {
                                     haptics.tick()
                                     viewModel.clearSketch()
                                 },
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            SketchCanvas(
+                                strokes = strokes,
+                                penColor = penColor,
+                                penWidthDp = penWidth,
+                                eraseMode = eraseMode,
+                                defaultColor = note.mood.earAccent(),
+                                onStrokeFinished = {
+                                    haptics.tick()
+                                    viewModel.addStroke(it)
+                                },
+                                onErase = viewModel::eraseStrokes,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(top = 8.dp, bottom = 24.dp),
                             )
                         }
-                        SketchCanvas(
-                            strokes = strokes,
-                            inkColor = note.mood.earAccent(),
-                            onStrokeFinished = {
-                                haptics.tick()
-                                viewModel.addStroke(it)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(top = 8.dp, bottom = 24.dp),
-                        )
                     }
 
                     NoteType.TEXT -> Column(
@@ -548,27 +557,6 @@ private fun LinkedNoteChips(
                 )
             }
         }
-    }
-}
-
-/** Kleiner Werkzeug-Knopf für den Skizzen-Editor (Rückgängig / Leeren). */
-@Composable
-private fun SketchTool(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    Row(
-        modifier = Modifier
-            .paperPress(RoundedCornerShape(50)) { onClick() }
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(imageVector = icon, contentDescription = label, tint = ink, modifier = Modifier.size(18.dp))
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = ink)
     }
 }
 
