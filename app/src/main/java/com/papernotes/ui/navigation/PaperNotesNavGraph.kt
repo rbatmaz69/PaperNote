@@ -1,6 +1,7 @@
 package com.papernotes.ui.navigation
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
@@ -16,6 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.papernotes.domain.model.NoteType
+import com.papernotes.ui.agenda.AgendaScreen
 import com.papernotes.ui.editor.EditorScreen
 import com.papernotes.ui.notes.NotesScreen
 
@@ -35,6 +37,8 @@ fun PaperNotesNavGraph(initialNoteId: Long? = null) {
     var newNoteType by rememberSaveable { mutableStateOf(NoteType.TEXT.name) }
     // Steigt bei jedem Öffnen → erzwingt frischen Editor-Zustand (siehe EditorViewModel.load).
     var editorSession by rememberSaveable { mutableIntStateOf(0) }
+    // Im Grid: true = Schreibtisch-Agenda statt Notiz-Raster.
+    var agendaVisible by rememberSaveable { mutableStateOf(false) }
 
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
         AnimatedContent(
@@ -46,19 +50,33 @@ fun PaperNotesNavGraph(initialNoteId: Long? = null) {
             },
         ) { target ->
             if (target == null) {
-                NotesScreen(
-                    sharedScope = this@SharedTransitionLayout,
-                    animatedScope = this@AnimatedContent,
-                    onOpenNote = {
-                        editorSession++
-                        selectedNoteId = it
-                    },
-                    onCreateNote = { type ->
-                        newNoteType = type.name
-                        editorSession++
-                        selectedNoteId = NEW_NOTE_ID
-                    },
-                )
+                Crossfade(targetState = agendaVisible, label = "agendaSwap") { showAgenda ->
+                    if (showAgenda) {
+                        AgendaScreen(
+                            onOpenNote = { id ->
+                                editorSession++
+                                agendaVisible = false
+                                selectedNoteId = id
+                            },
+                            onBack = { agendaVisible = false },
+                        )
+                    } else {
+                        NotesScreen(
+                            sharedScope = this@SharedTransitionLayout,
+                            animatedScope = this@AnimatedContent,
+                            onOpenNote = {
+                                editorSession++
+                                selectedNoteId = it
+                            },
+                            onCreateNote = { type ->
+                                newNoteType = type.name
+                                editorSession++
+                                selectedNoteId = NEW_NOTE_ID
+                            },
+                            onOpenAgenda = { agendaVisible = true },
+                        )
+                    }
+                }
             } else {
                 EditorScreen(
                     noteId = target,

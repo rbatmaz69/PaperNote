@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Search
@@ -125,6 +126,7 @@ fun NotesScreen(
     animatedScope: AnimatedVisibilityScope,
     onOpenNote: (Long) -> Unit,
     onCreateNote: (NoteType) -> Unit,
+    onOpenAgenda: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NotesViewModel = hiltViewModel(),
     themeViewModel: ThemeViewModel = hiltViewModel(),
@@ -459,6 +461,12 @@ fun NotesScreen(
                     icon = Icons.Rounded.Palette,
                     description = "Design wählen",
                     onClick = { themeSheetOpen = true },
+                )
+                Spacer(Modifier.width(8.dp))
+                TopAction(
+                    icon = Icons.Rounded.Event,
+                    description = "Agenda",
+                    onClick = onOpenAgenda,
                 )
             }
             TopAction(
