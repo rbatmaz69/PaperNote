@@ -20,6 +20,7 @@ data class NoteEntity(
     val deletedAt: Long?,
     val reminderAt: Long?,
     val expiresAt: Long?,
+    val backText: String,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -37,6 +38,7 @@ fun NoteEntity.toDomain(): Note = Note(
     deletedAt = deletedAt,
     reminderAt = reminderAt,
     expiresAt = expiresAt,
+    backText = backText,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -54,6 +56,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     deletedAt = deletedAt,
     reminderAt = reminderAt,
     expiresAt = expiresAt,
+    backText = backText,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

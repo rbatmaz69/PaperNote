@@ -25,10 +25,15 @@ data class Note(
     val reminderAt: Long? = null,
     /** Ablaufzeit (Epoch-Millis); null = beständig. Zur Zeit zerknüllt sich die Notiz selbst. */
     val expiresAt: Long? = null,
+    /** Text auf der Rückseite des Blatts (für jeden Notiz-Typ; leer = unbeschriebene Rückseite). */
+    val backText: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
-    val isBlank: Boolean get() = title.isBlank() && body.isBlank()
+    val isBlank: Boolean get() = title.isBlank() && body.isBlank() && backText.isBlank()
+
+    /** true, wenn die Rückseite beschrieben ist (Karte zeigt dann eine umgeknickte Ecke). */
+    val hasBack: Boolean get() = backText.isNotBlank()
 
     /** true, wenn eine Erinnerung gesetzt ist (Papier-Reiter als Vorab-Hinweis). */
     val hasReminder: Boolean get() = reminderAt != null

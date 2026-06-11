@@ -142,6 +142,12 @@ class EditorViewModel @Inject constructor(
         scheduleSave()
     }
 
+    /** Text auf der Rückseite des Blatts (unabhängig vom Notiz-Typ der Vorderseite). */
+    fun onBackChange(value: String) {
+        _note.update { it.copy(backText = value) }
+        scheduleSave()
+    }
+
     fun setMood(mood: MoodCategory) {
         _note.update { it.copy(mood = mood, dogEarFolded = true) }
         scheduleSave()

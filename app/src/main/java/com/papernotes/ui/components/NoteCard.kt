@@ -30,9 +30,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -50,6 +54,7 @@ import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.cardSurface
 import com.papernotes.domain.model.earAccent
+import com.papernotes.util.rememberPaperHaptics
 import java.time.LocalDate
 
 /**
@@ -73,6 +78,15 @@ fun NoteCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val haptics = rememberPaperHaptics()
+
+    // Blatt umdrehen: an Ort und Stelle auf die (nur lesbare) Rückseite blättern.
+    var showingBack by remember(note.id) { mutableStateOf(false) }
+    val flip by animateFloatAsState(
+        targetValue = if (showingBack) 180f else 0f,
+        animationSpec = tween(450),
+        label = "cardFlip",
+    )
 
     // Papier-Flattern: zarte, dauerhafte Wackelbewegung, solange die Erinnerung fällig ist.
     // Die Werte werden erst in der graphicsLayer (Draw-Phase) gelesen – nur fällige Karten
@@ -138,6 +152,10 @@ fun NoteCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    rotationY = flip
+                    cameraDistance = 12f * density
+                }
                 .shadow(
                     elevation = elevation,
                     shape = shape,
@@ -152,6 +170,7 @@ fun NoteCard(
                     onLongClick = onLongPress,
                 ),
         ) {
+          if (flip <= 90f) {
             Column(
                 modifier = Modifier
                     .defaultMinSize(minHeight = 96.dp)
@@ -236,6 +255,24 @@ fun NoteCard(
                 onToggle = onToggleDogEar,
                 onLongPress = onPickMood,
                 modifier = Modifier.align(Alignment.TopEnd),
+            )
+          } else {
+            BackFace(
+                text = note.backText,
+                surface = lerp(surface, SEPIA, 0.4f),
+                modifier = Modifier.graphicsLayer { rotationY = 180f },
+            )
+          }
+        }
+
+        // Umgeknickte Ecke unten-links: signalisiert eine beschriebene Rückseite und blättert um.
+        if (note.hasBack) {
+            PageCorner(
+                onFlip = {
+                    haptics.fold()
+                    showingBack = !showingBack
+                },
+                modifier = Modifier.align(Alignment.BottomStart),
             )
         }
 
@@ -345,6 +382,73 @@ private fun SealedContent() {
             text = "versiegelt",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.outline,
+        )
+    }
+}
+
+/**
+ * Die Rückseite des Blatts im Raster: nur-lesbarer Text auf dem dunkleren „Unterseiten"-Ton.
+ * Behält eine Mindesthöhe, damit die Karte beim Umblättern nicht zusammenfällt.
+ */
+@Composable
+private fun BackFace(text: String, surface: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 96.dp)
+            .background(surface, RoundedCornerShape(18.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = "Rückseite",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        Text(
+            text = text.trim(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 8,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * Kleine umgeknickte Ecke unten-links: zeigt an, dass das Blatt eine beschriebene Rückseite
+ * hat. Ein Tipp blättert die Karte um (bzw. wieder zurück).
+ */
+@Composable
+private fun PageCorner(onFlip: () -> Unit, modifier: Modifier = Modifier) {
+    Canvas(
+        modifier = modifier
+            .size(26.dp)
+            .pointerInput(Unit) { detectTapGestures(onTap = { onFlip() }) },
+    ) {
+        val w = size.width
+        val h = size.height
+        // Hochgerollter Eckzipfel unten links (Dreieck) – die Papier-Unterseite scheint durch.
+        val triangle = Path().apply {
+            moveTo(0f, h)
+            lineTo(0f, 0f)
+            lineTo(w, h)
+            close()
+        }
+        drawPath(triangle, PAPER_UNDERSIDE)
+        // Schattenkante entlang der Falz.
+        drawLine(
+            color = Color.Black.copy(alpha = 0.18f),
+            start = Offset(0f, 0f),
+            end = Offset(w, h),
+            strokeWidth = 2.5f,
+        )
+        // Heller Glanz auf der gerollten Kante.
+        drawLine(
+            color = Color.White.copy(alpha = 0.25f),
+            start = Offset(0f, h * 0.88f),
+            end = Offset(w * 0.88f, h),
+            strokeWidth = 1.5f,
         )
     }
 }

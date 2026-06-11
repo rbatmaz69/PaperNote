@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.FlipToBack
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,6 +58,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -135,6 +139,7 @@ fun EditorScreen(
     val candidateNotes by viewModel.candidateNotes.collectAsStateWithLifecycle()
 
     var showMood by remember { mutableStateOf(false) }
+    var showingBack by remember { mutableStateOf(false) }
     var showReminder by remember { mutableStateOf(false) }
     var showExpiry by remember { mutableStateOf(false) }
     var showLinkPicker by remember { mutableStateOf(false) }
@@ -146,6 +151,12 @@ fun EditorScreen(
     val ink = MaterialTheme.colorScheme.onBackground
     // Stimmungswechsel: Editor-Hintergrund weich durchwaschen.
     val noteSurface by animateColorAsState(note.mood.cardSurface(), tween(320), label = "editorSurface")
+    // Blatt umdrehen: 0° = Vorderseite, 180° = Rückseite (Inhalt wird bei 90° getauscht).
+    val flip by animateFloatAsState(
+        targetValue = if (showingBack) 180f else 0f,
+        animationSpec = tween(450),
+        label = "editorFlip",
+    )
 
     // Konfetti, wenn der letzte offene Eintrag abgehakt wurde
     LaunchedEffect(celebration) {
@@ -219,6 +230,17 @@ fun EditorScreen(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Blatt umdrehen: Vorder- ↔ Rückseite
+                        IconButton(onClick = {
+                            haptics.fold()
+                            showingBack = !showingBack
+                        }) {
+                            Icon(
+                                imageVector = Icons.Rounded.FlipToBack,
+                                contentDescription = if (showingBack) "Vorderseite" else "Rückseite",
+                                tint = if (showingBack) note.mood.earAccent() else ink,
+                            )
+                        }
                         DogEar(
                             folded = note.dogEarFolded,
                             accent = note.mood.earAccent(),
@@ -255,7 +277,18 @@ fun EditorScreen(
                     )
                 }
 
-                when (note.type) {
+                // Das Blatt: Vorderseite (typabhängig) ↔ frei beschreibbare Rückseite.
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            rotationY = flip
+                            cameraDistance = 12f * density
+                        },
+                ) {
+                  if (flip <= 90f) {
+                    when (note.type) {
                     NoteType.CHECKLIST -> ChecklistEditor(
                         items = items,
                         focusRequestId = focusRequestId,
@@ -266,7 +299,7 @@ fun EditorScreen(
                         onAddAfter = viewModel::addItem,
                         onRemove = viewModel::removeItem,
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxSize()
                             .padding(horizontal = 24.dp),
                         header = {
                             TitleField(
@@ -394,6 +427,16 @@ fun EditorScreen(
                                 .padding(bottom = 48.dp),
                         )
                     }
+                    }
+                  } else {
+                    BackEditor(
+                        text = note.backText,
+                        onTextChange = viewModel::onBackChange,
+                        surface = lerp(noteSurface, SEPIA, 0.4f),
+                        ink = ink,
+                        modifier = Modifier.graphicsLayer { rotationY = 180f },
+                    )
+                  }
                 }
             }
         }
@@ -590,3 +633,54 @@ private fun TitleField(
             .padding(top = 8.dp, bottom = 12.dp),
     )
 }
+
+/**
+ * Die Rückseite des Blatts: eine freie Textfläche auf dem etwas dunkleren „Unterseiten"-Ton
+ * des Papiers – für Nachgedanken, Quellen oder eine Antwort, unabhängig vom Typ der Vorderseite.
+ */
+@Composable
+private fun BackEditor(
+    text: String,
+    onTextChange: (String) -> Unit,
+    surface: Color,
+    ink: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .background(surface, RoundedCornerShape(18.dp))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+    ) {
+        Text(
+            text = "Rückseite",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        BasicTextField(
+            value = text,
+            onValueChange = onTextChange,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = ink),
+            cursorBrush = SolidColor(ink),
+            decorationBox = { inner ->
+                if (text.isEmpty()) {
+                    Text(
+                        text = "Notiz auf der Rückseite …",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+                inner()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 48.dp),
+        )
+    }
+}
+
+/** Wärmerer „Papier-Unterseiten"-Ton, in den die Rückseite eingefärbt wird. */
+private val SEPIA = Color(0xFFE8D7A0)
