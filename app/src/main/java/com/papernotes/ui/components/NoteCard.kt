@@ -231,6 +231,14 @@ fun NoteCard(
                         }
                         NoteType.TEXT -> if (note.invisibleInk && note.body.isNotBlank()) {
                             InvisibleInkText(text = note.preview, onOpen = onClick)
+                        } else if (note.body.isNotBlank() && note.highlightRanges.isNotEmpty()) {
+                            Text(
+                                text = buildHighlightedString(note.body, note.highlightRanges),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 6,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         } else {
                             Text(
                                 text = note.preview,

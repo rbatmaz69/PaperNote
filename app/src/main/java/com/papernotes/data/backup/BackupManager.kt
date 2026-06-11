@@ -142,6 +142,7 @@ object BackupManager {
         put("paper", paper.name)
         put("tags", tags)
         put("position", position)
+        put("highlights", highlights)
         put("createdAt", createdAt)
         put("updatedAt", updatedAt)
     }
@@ -167,6 +168,7 @@ object BackupManager {
         paper = PaperStyle.fromName(o.optString("paper")),
         tags = o.optString("tags"),
         position = o.optLong("position"),
+        highlights = o.optString("highlights"),
         createdAt = o.optLong("createdAt", System.currentTimeMillis()),
         updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
     )

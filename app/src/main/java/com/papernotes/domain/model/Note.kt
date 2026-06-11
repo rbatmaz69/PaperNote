@@ -2,6 +2,8 @@ package com.papernotes.domain.model
 
 import com.papernotes.domain.ChecklistCodec
 import com.papernotes.domain.ChecklistItem
+import com.papernotes.domain.Highlight
+import com.papernotes.domain.HighlightCodec
 import com.papernotes.domain.SketchCodec
 import com.papernotes.domain.SketchStroke
 import com.papernotes.domain.StampCodec
@@ -44,6 +46,8 @@ data class Note(
     val tags: String = "",
     /** Manuelle Reihenfolge (Pinnwand): kleiner = weiter oben. 0 = noch nie angeordnet. */
     val position: Long = 0L,
+    /** Textmarker-Markierungen (kodiert via HighlightCodec); leer = keine. */
+    val highlights: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
@@ -80,6 +84,12 @@ data class Note(
     /** Setzt die Reiter neu (getrimmt, dedupliziert, ohne Leereinträge). */
     fun withTags(list: List<String>): Note =
         copy(tags = list.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString("\n"))
+
+    /** Textmarker-Markierungen als Liste. */
+    val highlightRanges: List<Highlight> get() = HighlightCodec.parse(highlights)
+
+    fun withHighlights(list: List<Highlight>): Note =
+        copy(highlights = HighlightCodec.serialize(list))
 
     /** Verbleibende Tage bis zum Zieltag (0 = heute, negativ = vorbei); null = kein Countdown. */
     fun daysUntil(now: Long): Long? = countdownAt?.let {

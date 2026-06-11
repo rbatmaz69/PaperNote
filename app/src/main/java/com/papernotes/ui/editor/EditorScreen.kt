@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -38,6 +39,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.BorderColor
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.FlipToBack
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
@@ -68,13 +71,18 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.papernotes.domain.model.NoteType
+import com.papernotes.ui.components.HighlightColors
+import com.papernotes.ui.components.highlightTransformation
+import com.papernotes.ui.components.ordered
 import com.papernotes.domain.model.cardSurface
 import com.papernotes.domain.model.earAccent
 import com.papernotes.domain.toShareText
@@ -180,6 +188,14 @@ fun EditorScreen(
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
     var shareText by remember { mutableStateOf("") }
     val bodyFocus = remember { FocusRequester() }
+    // Textmarker: Body-Feld als TextFieldValue (für die Auswahl) + sichtbare Farbleiste.
+    var bodyValue by remember(session) { mutableStateOf(TextFieldValue(note.body)) }
+    var lastSelection by remember(session) { mutableStateOf(TextRange.Zero) }
+    var markerBar by remember { mutableStateOf(false) }
+    // Externen Lade-/Reset-Stand übernehmen, ohne die laufende Eingabe zu stören.
+    LaunchedEffect(note.id, note.body) {
+        if (note.body != bodyValue.text) bodyValue = bodyValue.copy(text = note.body)
+    }
     val ink = MaterialTheme.colorScheme.onBackground
     // Stimmungswechsel: Editor-Hintergrund weich durchwaschen.
     val noteSurface by animateColorAsState(note.mood.cardSurface(), tween(320), label = "editorSurface")
@@ -262,6 +278,46 @@ fun EditorScreen(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                      if (markerBar && note.type == NoteType.TEXT && !showingBack) {
+                        // Textmarker aktiv: Farb-Swatches direkt in der oberen Leiste.
+                        HighlightColors.forEachIndexed { index, color ->
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 10.dp)
+                                    .size(26.dp)
+                                    .paperPress(CircleShape) {
+                                        haptics.tick()
+                                        val (a, b) = lastSelection.ordered()
+                                        viewModel.applyHighlight(a, b, index)
+                                    }
+                                    .background(color, CircleShape)
+                                    .border(1.dp, ink.copy(alpha = 0.25f), CircleShape),
+                            )
+                        }
+                        IconButton(onClick = {
+                            haptics.tap()
+                            markerBar = false
+                        }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = "Fertig",
+                                tint = note.mood.earAccent(),
+                            )
+                        }
+                      } else {
+                        // Textmarker: Farbleiste ein-/ausblenden (nur für Text-Notizen).
+                        if (note.type == NoteType.TEXT && !showingBack) {
+                            IconButton(onClick = {
+                                haptics.tap()
+                                markerBar = true
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.BorderColor,
+                                    contentDescription = "Textmarker",
+                                    tint = ink,
+                                )
+                            }
+                        }
                         // Blatt umdrehen: Vorder- ↔ Rückseite
                         IconButton(onClick = {
                             haptics.fold()
@@ -293,6 +349,7 @@ fun EditorScreen(
                                 tint = ink,
                             )
                         }
+                      }
                     }
                 }
 
@@ -461,10 +518,17 @@ fun EditorScreen(
                         )
 
                         BasicTextField(
-                            value = note.body,
-                            onValueChange = viewModel::onBodyChange,
+                            value = bodyValue,
+                            onValueChange = { v ->
+                                viewModel.onBodyChange(v.text)
+                                // Letzte echte Auswahl merken – das Antippen einer Marker-Farbe
+                                // oben darf den Text-Fokus verlieren, ohne die Auswahl zu vergessen.
+                                if (!v.selection.collapsed) lastSelection = v.selection
+                                bodyValue = v
+                            },
                             textStyle = MaterialTheme.typography.bodyLarge.copy(color = ink),
                             cursorBrush = SolidColor(ink),
+                            visualTransformation = highlightTransformation(note.highlightRanges),
                             decorationBox = { inner ->
                                 if (note.body.isEmpty()) {
                                     Text(

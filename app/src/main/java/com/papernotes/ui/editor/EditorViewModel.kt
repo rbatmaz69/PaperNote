@@ -6,6 +6,7 @@ import com.papernotes.data.prefs.DelightPreferences
 import com.papernotes.data.repository.NoteRepository
 import com.papernotes.domain.ChecklistCodec
 import com.papernotes.domain.ChecklistItem
+import com.papernotes.domain.Highlight
 import com.papernotes.domain.SketchStroke
 import com.papernotes.domain.StampCodec
 import com.papernotes.domain.StampMotif
@@ -146,7 +147,26 @@ class EditorViewModel @Inject constructor(
     }
 
     fun onBodyChange(value: String) {
-        _note.update { it.copy(body = value) }
+        _note.update { note ->
+            // Textmarker-Markierungen beim Editieren mitverschieben.
+            val shifted = shiftHighlights(note.body, value, note.highlightRanges)
+            note.copy(body = value).withHighlights(shifted)
+        }
+        scheduleSave()
+    }
+
+    /** Markiert die Auswahl [start, end) farbig – oder entfernt sie, wenn sie bereits markiert ist. */
+    fun applyHighlight(start: Int, end: Int, color: Int) {
+        if (end <= start) return
+        _note.update { note ->
+            val ranges = note.highlightRanges
+            val next = if (isCovered(ranges, start, end)) {
+                subtract(ranges, start, end)
+            } else {
+                subtract(ranges, start, end) + Highlight(start, end, color)
+            }
+            note.withHighlights(next)
+        }
         scheduleSave()
     }
 
@@ -452,3 +472,51 @@ class EditorViewModel @Inject constructor(
         }
     }
 }
+
+// --- Textmarker-Hilfsfunktionen (reine Listen-/Offset-Operationen) ---
+
+/** Verschiebt Markierungen, wenn sich [old] zu [new] ändert (Präfix-/Suffix-Diff). */
+private fun shiftHighlights(old: String, new: String, ranges: List<Highlight>): List<Highlight> {
+    if (ranges.isEmpty() || old == new) return ranges
+    val maxPrefix = minOf(old.length, new.length)
+    var p = 0
+    while (p < maxPrefix && old[p] == new[p]) p++
+    var s = 0
+    while (s < maxPrefix - p && old[old.length - 1 - s] == new[new.length - 1 - s]) s++
+    val changeStart = p
+    val changeEndOld = old.length - s
+    val delta = new.length - old.length
+
+    fun map(x: Int): Int = when {
+        x <= changeStart -> x
+        x >= changeEndOld -> x + delta
+        else -> changeStart
+    }
+    return ranges.mapNotNull { h ->
+        val a = map(h.start).coerceIn(0, new.length)
+        val b = map(h.end).coerceIn(0, new.length)
+        if (b > a) Highlight(a, b, h.color) else null
+    }
+}
+
+/** true, wenn [a, b) lückenlos von Markierungen überdeckt ist. */
+private fun isCovered(ranges: List<Highlight>, a: Int, b: Int): Boolean {
+    var cursor = a
+    for (h in ranges.sortedBy { it.start }) {
+        if (h.start <= cursor && h.end > cursor) cursor = h.end
+        if (cursor >= b) return true
+    }
+    return cursor >= b
+}
+
+/** Entfernt das Intervall [a, b) aus allen Markierungen (teilt sie ggf. auf). */
+private fun subtract(ranges: List<Highlight>, a: Int, b: Int): List<Highlight> =
+    ranges.flatMap { h ->
+        when {
+            h.end <= a || h.start >= b -> listOf(h)                       // keine Überlappung
+            else -> buildList {
+                if (h.start < a) add(Highlight(h.start, a, h.color))      // linker Rest
+                if (h.end > b) add(Highlight(b, h.end, h.color))          // rechter Rest
+            }
+        }
+    }
