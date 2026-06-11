@@ -48,7 +48,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -69,14 +68,11 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.papernotes.domain.model.NoteType
@@ -108,7 +104,6 @@ import com.papernotes.ui.components.TagPickerSheet
 import com.papernotes.ui.components.paperPress
 import com.papernotes.ui.components.paperRuling
 import java.time.LocalDate
-import com.papernotes.util.findActivity
 import com.papernotes.util.PhotoStore
 import com.papernotes.util.rememberPaperHaptics
 import com.papernotes.util.sharePlainText
@@ -132,7 +127,6 @@ fun EditorScreen(
     viewModel: EditorViewModel = hiltViewModel(),
 ) {
     val haptics = rememberPaperHaptics()
-    val view = LocalView.current
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
 
@@ -212,18 +206,6 @@ fun EditorScreen(
             haptics.confirm()
             confettiKey = celebration
         }
-    }
-
-    // System-Leisten ausblenden, beim Verlassen wiederherstellen.
-    DisposableEffect(Unit) {
-        val window = view.context.findActivity()?.window
-        val controller = window?.let { WindowInsetsControllerCompat(it, view) }
-        controller?.apply {
-            systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(WindowInsetsCompat.Type.systemBars())
-        }
-        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
     }
 
     // Bei neuer Text-Notiz direkt Tastatur/Fokus (Checkliste fokussiert ihre erste Zeile selbst).

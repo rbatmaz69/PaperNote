@@ -68,6 +68,8 @@ data class NotesUiState(
     val searchQuery: String = "",
     val links: List<NoteLink> = emptyList(),
     val delight: DailyDelight,
+    /** false, solange Room noch nicht das erste Mal emittiert hat (für Splash & Leerzustand). */
+    val loaded: Boolean = false,
     val delightAvailable: Boolean = true,
     val statsLine: String = "",
 )
@@ -188,12 +190,13 @@ class NotesViewModel @Inject constructor(
                 searchQuery = searchQuery.value,
                 links = grid.links,
                 delight = delight,
+                loaded = true,
                 delightAvailable = available,
                 statsLine = stats,
             )
         }.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
+            started = SharingStarted.Eagerly,
             initialValue = NotesUiState(delight = delight),
         )
 

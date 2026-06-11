@@ -29,6 +29,12 @@ class ThemeViewModel @Inject constructor(
                 initialValue = PaperTheme.AUTO,
             )
 
+    /** true, sobald DataStore das gespeicherte Theme geliefert hat (für den Splash). */
+    val ready: StateFlow<Boolean> =
+        settings.themeKey
+            .map { true }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     fun setTheme(theme: PaperTheme) = viewModelScope.launch {
         settings.setThemeKey(theme.name)
     }

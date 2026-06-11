@@ -371,7 +371,10 @@ fun NotesScreen(
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
                 )
 
-                if (state.notes.isEmpty()) {
+                if (!state.loaded) {
+                    // Während des ersten Ladens nur Hintergrund – kein „leer"-Aufblitzen.
+                    Box(modifier = Modifier.fillMaxSize())
+                } else if (state.notes.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         EmptyState(modifier = Modifier.align(Alignment.Center))
                     }
