@@ -92,6 +92,7 @@ import com.papernotes.ui.components.InkSearchBar
 import com.papernotes.ui.components.MoodFilterRow
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.ClipPickerSheet
+import com.papernotes.ui.components.CountdownSheet
 import com.papernotes.ui.components.NoteCard
 import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.NoteStack
@@ -175,6 +176,7 @@ fun NotesScreen(
     var linkTarget by remember { mutableStateOf<Note?>(null) }
     var clipTarget by remember { mutableStateOf<Note?>(null) }
     var expiryTarget by remember { mutableStateOf<Note?>(null) }
+    var countdownTarget by remember { mutableStateOf<Note?>(null) }
 
     // Welche Karten schon „eingeflogen" sind – neue Notizen fallen einmalig herein.
     val introducedIds = remember { mutableStateMapOf<Long, Unit>() }
@@ -355,6 +357,7 @@ fun NotesScreen(
                                             onToggleDogEar = { viewModel.toggleDogEar(note) },
                                             onPickMood = { moodTarget = note },
                                             onLongPress = { viewModel.togglePin(note) },
+                                            onCountdown = { countdownTarget = note },
                                             onToggleStampDay = { day -> viewModel.toggleStamp(note, day) },
                                             modifier = Modifier
                                                 .graphicsLayer {
@@ -385,6 +388,7 @@ fun NotesScreen(
                                     onPickMood = { moodTarget = it },
                                     onToggleStampDay = { n, day -> viewModel.toggleStamp(n, day) },
                                     onUnclip = { viewModel.unclip(it) },
+                                    onCountdown = { countdownTarget = it },
                                     modifier = Modifier.animateItem(),
                                 )
                             }
@@ -524,6 +528,7 @@ fun NotesScreen(
             hasReminder = target.hasReminder,
             sealed = target.sealed,
             hasExpiry = target.hasExpiry,
+            hasCountdown = target.hasCountdown,
             onPick = { mood ->
                 viewModel.setMood(target, mood)
                 moodTarget = null
@@ -543,6 +548,10 @@ fun NotesScreen(
             onSetReminder = {
                 moodTarget = null
                 reminderTarget = target
+            },
+            onSetCountdown = {
+                moodTarget = null
+                countdownTarget = target
             },
             onLink = {
                 moodTarget = null
@@ -606,6 +615,22 @@ fun NotesScreen(
                 expiryTarget = null
             },
             onDismiss = { expiryTarget = null },
+        )
+    }
+
+    // Abreißkalender: Zieldatum der Notiz wählen/abreißen
+    countdownTarget?.let { target ->
+        CountdownSheet(
+            currentCountdownAt = target.countdownAt,
+            onPick = { at ->
+                viewModel.setCountdown(target, at)
+                countdownTarget = null
+            },
+            onClear = {
+                viewModel.setCountdown(target, null)
+                countdownTarget = null
+            },
+            onDismiss = { countdownTarget = null },
         )
     }
 

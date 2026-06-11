@@ -70,6 +70,7 @@ fun NoteCard(
     onToggleDogEar: () -> Unit,
     onPickMood: () -> Unit,
     onLongPress: () -> Unit = {},
+    onCountdown: () -> Unit = {},
     modifier: Modifier = Modifier,
     dimmed: Boolean = false,
     reminderDue: Boolean = false,
@@ -273,6 +274,19 @@ fun NoteCard(
                     showingBack = !showingBack
                 },
                 modifier = Modifier.align(Alignment.BottomStart),
+            )
+        }
+
+        // Abreißkalender: Kalenderblatt oben links, zeigt die Resttage bis zum Zieltag.
+        note.countdownAt?.let { at ->
+            CalendarPage(
+                countdownAt = at,
+                now = now,
+                accent = accent,
+                onClick = onCountdown,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = (-6).dp, y = (-8).dp),
             )
         }
 

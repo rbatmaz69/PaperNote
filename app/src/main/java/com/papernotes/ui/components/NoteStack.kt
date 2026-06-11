@@ -60,6 +60,7 @@ fun NoteStack(
     onPickMood: (Note) -> Unit,
     onToggleStampDay: (Note, Long) -> Unit,
     onUnclip: (Note) -> Unit,
+    onCountdown: (Note) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberPaperHaptics()
@@ -74,6 +75,7 @@ fun NoteStack(
             onPickMood = onPickMood,
             onToggleStampDay = onToggleStampDay,
             onUnclip = onUnclip,
+            onCountdown = onCountdown,
             onCollapse = { haptics.tick(); expanded = false },
             modifier = modifier,
         )
@@ -85,6 +87,7 @@ fun NoteStack(
             onToggleDogEar = onToggleDogEar,
             onPickMood = onPickMood,
             onToggleStampDay = onToggleStampDay,
+            onCountdown = onCountdown,
             onExpand = { haptics.tick(); expanded = true },
             modifier = modifier,
         )
@@ -99,6 +102,7 @@ private fun CollapsedStack(
     onToggleDogEar: (Note) -> Unit,
     onPickMood: (Note) -> Unit,
     onToggleStampDay: (Note, Long) -> Unit,
+    onCountdown: (Note) -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -137,6 +141,7 @@ private fun CollapsedStack(
             onClick = onOpenCover,
             onToggleDogEar = { onToggleDogEar(cover) },
             onPickMood = { onPickMood(cover) },
+            onCountdown = { onCountdown(cover) },
             onToggleStampDay = { day -> onToggleStampDay(cover, day) },
         )
 
@@ -160,6 +165,7 @@ private fun ExpandedStack(
     onPickMood: (Note) -> Unit,
     onToggleStampDay: (Note, Long) -> Unit,
     onUnclip: (Note) -> Unit,
+    onCountdown: (Note) -> Unit,
     onCollapse: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -202,6 +208,7 @@ private fun ExpandedStack(
                     onClick = { onOpenNote(note.id) },
                     onToggleDogEar = { onToggleDogEar(note) },
                     onPickMood = { onPickMood(note) },
+                    onCountdown = { onCountdown(note) },
                     onToggleStampDay = { day -> onToggleStampDay(note, day) },
                 )
                 // Aus dem Stapel lösen.

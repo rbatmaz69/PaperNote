@@ -1,0 +1,177 @@
+package com.papernotes.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.ContentCut
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import com.papernotes.util.rememberPaperHaptics
+import com.papernotes.ui.theme.Terracotta
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+/**
+ * Bottom-Sheet zum Setzen eines Abreißkalender-Zieldatums (Countdown): Schnell-Presets plus
+ * „Eigenes Datum …". Die Karte zeigt danach ein Kalenderblatt mit den Resttagen. Ist bereits
+ * ein Termin gesetzt, lässt er sich hier auch wieder „abreißen".
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CountdownSheet(
+    currentCountdownAt: Long?,
+    onPick: (Long) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val haptics = rememberPaperHaptics()
+    var showCustom by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.background,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "Countdown",
+                style = MaterialTheme.typography.titleLarge,
+                color = ink,
+            )
+
+            Text(
+                text = if (currentCountdownAt != null) {
+                    "Termin: ${formatDate(currentCountdownAt)} · ${remainingLabel(currentCountdownAt)}"
+                } else {
+                    "Wähle einen Tag, auf den diese Notiz herunterzählt."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            PresetRow("In 1 Woche") { onPick(inDays(7)) }
+            PresetRow("In 1 Monat") { onPick(inMonths(1)) }
+            PresetRow("Eigenes Datum …", icon = Icons.Rounded.Event) { showCustom = true }
+
+            if (currentCountdownAt != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .paperPress(RoundedCornerShape(14.dp)) { haptics.fold(); onClear() }
+                        .background(Terracotta.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ContentCut,
+                        contentDescription = null,
+                        tint = Terracotta,
+                    )
+                    Text(
+                        text = "Kalender abreißen",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Terracotta,
+                    )
+                }
+            }
+        }
+    }
+
+    if (showCustom) {
+        val base = currentCountdownAt ?: System.currentTimeMillis()
+        val dateState = rememberDatePickerState(initialSelectedDateMillis = base)
+        DatePickerDialog(
+            onDismissRequest = { showCustom = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCustom = false
+                    onPick(startOfDay(dateState.selectedDateMillis ?: base))
+                }) { Text("Setzen") }
+            },
+            dismissButton = { TextButton(onClick = { showCustom = false }) { Text("Abbrechen") } },
+        ) {
+            DatePicker(state = dateState)
+        }
+    }
+}
+
+@Composable
+private fun PresetRow(
+    label: String,
+    icon: ImageVector = Icons.Rounded.CalendarMonth,
+    onClick: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .paperPress(RoundedCornerShape(14.dp)) { onClick() }
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = ink)
+        Text(text = label, style = MaterialTheme.typography.labelLarge, color = ink)
+    }
+}
+
+// --- Datums-Helfer (Ergebnis stets am Tagesbeginn) ---
+
+private fun startOfDay(millis: Long): Long = Calendar.getInstance().apply {
+    timeInMillis = millis
+    set(Calendar.HOUR_OF_DAY, 0)
+    set(Calendar.MINUTE, 0)
+    set(Calendar.SECOND, 0)
+    set(Calendar.MILLISECOND, 0)
+}.timeInMillis
+
+private fun inDays(days: Int): Long =
+    startOfDay(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, days) }.timeInMillis)
+
+private fun inMonths(months: Int): Long =
+    startOfDay(Calendar.getInstance().apply { add(Calendar.MONTH, months) }.timeInMillis)
+
+private fun remainingLabel(target: Long): String {
+    val days = ((startOfDay(target) - startOfDay(System.currentTimeMillis())) /
+        (24L * 60L * 60L * 1000L))
+    return when {
+        days > 0L -> "noch $days Tage"
+        days == 0L -> "heute"
+        else -> "vorbei"
+    }
+}
+
+private fun formatDate(millis: Long): String =
+    SimpleDateFormat("EEE, d. MMM yyyy", Locale.GERMAN).format(millis)

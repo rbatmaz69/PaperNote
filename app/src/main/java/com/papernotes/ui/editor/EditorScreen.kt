@@ -78,6 +78,7 @@ import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.DogEar
 import com.papernotes.ui.components.ExpirySheet
 import com.papernotes.ui.components.ClipPickerSheet
+import com.papernotes.ui.components.CountdownSheet
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.NoteLinkPickerSheet
@@ -145,6 +146,7 @@ fun EditorScreen(
     var showExpiry by remember { mutableStateOf(false) }
     var showLinkPicker by remember { mutableStateOf(false) }
     var showClip by remember { mutableStateOf(false) }
+    var showCountdown by remember { mutableStateOf(false) }
     var confettiKey by remember { mutableStateOf<Int?>(null) }
     var editorBounds by remember { mutableStateOf(Rect.Zero) }
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
@@ -468,6 +470,7 @@ fun EditorScreen(
                 hasReminder = note.hasReminder,
                 sealed = note.sealed,
                 hasExpiry = note.hasExpiry,
+                hasCountdown = note.hasCountdown,
                 onPick = {
                     haptics.tick()
                     viewModel.setMood(it)
@@ -490,6 +493,10 @@ fun EditorScreen(
                 onSetReminder = {
                     showMood = false
                     showReminder = true
+                },
+                onSetCountdown = {
+                    showMood = false
+                    showCountdown = true
                 },
                 onLink = {
                     showMood = false
@@ -550,6 +557,22 @@ fun EditorScreen(
                     showExpiry = false
                 },
                 onDismiss = { showExpiry = false },
+            )
+        }
+
+        if (showCountdown) {
+            CountdownSheet(
+                currentCountdownAt = note.countdownAt,
+                onPick = { at ->
+                    haptics.tick()
+                    viewModel.setCountdown(at)
+                    showCountdown = false
+                },
+                onClear = {
+                    viewModel.setCountdown(null)
+                    showCountdown = false
+                },
+                onDismiss = { showCountdown = false },
             )
         }
 

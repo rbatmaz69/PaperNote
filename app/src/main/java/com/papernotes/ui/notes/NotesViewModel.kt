@@ -222,6 +222,10 @@ class NotesViewModel @Inject constructor(
         repository.setExpiry(note.id, at)
     }
 
+    fun setCountdown(note: Note, at: Long?) = viewModelScope.launch {
+        repository.setCountdown(note.id, at)
+    }
+
     fun linkNotes(a: Long, b: Long) = viewModelScope.launch { repository.linkNotes(a, b) }
 
     fun unlinkNotes(a: Long, b: Long) = viewModelScope.launch { repository.unlinkNotes(a, b) }

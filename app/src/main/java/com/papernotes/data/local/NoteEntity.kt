@@ -22,6 +22,7 @@ data class NoteEntity(
     val expiresAt: Long?,
     val backText: String,
     val clipId: Long?,
+    val countdownAt: Long?,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -41,6 +42,7 @@ fun NoteEntity.toDomain(): Note = Note(
     expiresAt = expiresAt,
     backText = backText,
     clipId = clipId,
+    countdownAt = countdownAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -60,6 +62,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     expiresAt = expiresAt,
     backText = backText,
     clipId = clipId,
+    countdownAt = countdownAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

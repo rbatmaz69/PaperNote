@@ -6,6 +6,9 @@ import com.papernotes.domain.SketchCodec
 import com.papernotes.domain.SketchStroke
 import com.papernotes.domain.StampCodec
 import com.papernotes.domain.StampMotif
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /** Domänenmodell einer Notiz (UI-/Logik-Schicht, entkoppelt von Room). */
 data class Note(
@@ -29,6 +32,8 @@ data class Note(
     val backText: String = "",
     /** Büroklammer-Stapel: Notizen mit gleichem clipId bilden ein Bündel. null = nicht geklammert. */
     val clipId: Long? = null,
+    /** Abreißkalender: Zieldatum (Epoch-Millis am Tagesbeginn); null = kein Countdown. */
+    val countdownAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
@@ -48,6 +53,16 @@ data class Note(
 
     /** true, wenn die Notiz zu [now] abgelaufen ist (zerknüllt sich dann selbst). */
     fun isExpired(now: Long): Boolean = expiresAt?.let { it <= now } == true
+
+    /** true, wenn ein Abreißkalender-Zieldatum gesetzt ist. */
+    val hasCountdown: Boolean get() = countdownAt != null
+
+    /** Verbleibende Tage bis zum Zieltag (0 = heute, negativ = vorbei); null = kein Countdown. */
+    fun daysUntil(now: Long): Long? = countdownAt?.let {
+        val today = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate()
+        val target = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+        ChronoUnit.DAYS.between(today, target)
+    }
 
     val preview: String
         get() = body.trim().ifBlank { "—" }

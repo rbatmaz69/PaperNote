@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material.icons.rounded.Hub
@@ -46,9 +47,11 @@ fun MoodPickerSheet(
     hasReminder: Boolean,
     sealed: Boolean,
     hasExpiry: Boolean,
+    hasCountdown: Boolean,
     onPick: (MoodCategory) -> Unit,
     onTogglePin: () -> Unit,
     onSetReminder: () -> Unit,
+    onSetCountdown: () -> Unit,
     onLink: () -> Unit,
     onShare: () -> Unit,
     onClip: (() -> Unit)? = null,
@@ -141,6 +144,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (hasReminder) "Erinnerung ändern" else "Erinnerung setzen",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Abreißkalender / Countdown zu einem Tag
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onSetCountdown() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CalendarMonth,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (hasCountdown) "Termin ändern" else "Countdown setzen",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

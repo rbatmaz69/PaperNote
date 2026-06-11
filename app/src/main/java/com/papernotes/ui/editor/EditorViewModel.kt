@@ -174,6 +174,12 @@ class EditorViewModel @Inject constructor(
         scheduleSave()
     }
 
+    /** Setzt/entfernt das Abreißkalender-Zieldatum; rein persistiert, kein Alarm nötig. */
+    fun setCountdown(at: Long?) {
+        _note.update { it.copy(countdownAt = at) }
+        scheduleSave()
+    }
+
     /**
      * Setzt ([at] != null) oder entfernt ([at] == null) die Erinnerung. Speichert sofort,
      * damit eine frische Notiz eine id bekommt, und plant/entfernt dann den exakten Alarm.
