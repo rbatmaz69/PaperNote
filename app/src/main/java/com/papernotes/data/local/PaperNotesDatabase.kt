@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NoteEntity::class, NoteLinkEntity::class],
-    version = 12,
+    version = 13,
     exportSchema = false,
 )
 abstract class PaperNotesDatabase : RoomDatabase() {
@@ -94,6 +94,13 @@ abstract class PaperNotesDatabase : RoomDatabase() {
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE notes ADD COLUMN invisibleInk INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** v13: Karteireiter (Tags, \n-getrennt). */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
             }
         }
     }

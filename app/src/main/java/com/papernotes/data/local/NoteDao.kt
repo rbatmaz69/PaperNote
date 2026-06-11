@@ -70,6 +70,9 @@ interface NoteDao {
     @Query("UPDATE notes SET paper = :paper, updatedAt = :now WHERE id = :id")
     suspend fun setPaper(id: Long, paper: String, now: Long)
 
+    @Query("UPDATE notes SET tags = :tags, updatedAt = :now WHERE id = :id")
+    suspend fun setTags(id: Long, tags: String, now: Long)
+
     /** Abgelaufene Notizen still in den Papierkorb verschieben (Ablaufzeit dabei leeren). */
     @Query(
         "UPDATE notes SET deletedAt = :now, expiresAt = NULL " +

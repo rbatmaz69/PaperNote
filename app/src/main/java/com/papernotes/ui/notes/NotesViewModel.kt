@@ -63,6 +63,8 @@ data class NotesUiState(
     val trashed: List<Note> = emptyList(),
     val presentMoods: List<MoodCategory> = emptyList(),
     val activeMoodFilter: MoodCategory? = null,
+    val presentTags: List<String> = emptyList(),
+    val activeTagFilter: String? = null,
     val searchQuery: String = "",
     val links: List<NoteLink> = emptyList(),
     val delight: DailyDelight,
@@ -76,6 +78,8 @@ private data class GridState(
     val items: List<GridItem>,
     val presentMoods: List<MoodCategory>,
     val activeMood: MoodCategory?,
+    val presentTags: List<String>,
+    val activeTag: String?,
     val links: List<NoteLink>,
 )
 
@@ -114,6 +118,7 @@ class NotesViewModel @Inject constructor(
 
     private val searchQuery = MutableStateFlow("")
     private val moodFilter = MutableStateFlow<MoodCategory?>(null)
+    private val tagFilter = MutableStateFlow<String?>(null)
 
     init {
         viewModelScope.launch { repository.purgeOldTrash() }
@@ -125,8 +130,9 @@ class NotesViewModel @Inject constructor(
         repository.observeActiveNotes(),
         searchQuery,
         moodFilter,
+        tagFilter,
         repository.observeLinks(),
-    ) { notes, query, mood, links ->
+    ) { notes, query, mood, tag, links ->
         val trimmed = query.trim()
         val gridNotes = notes.map { note ->
             // Versiegelte Notizen tauchen nicht in Suchtreffern auf (kein Inhalts-Leak),
@@ -137,13 +143,16 @@ class NotesViewModel @Inject constructor(
                         note.body.contains(trimmed, ignoreCase = true)
                     ))
             val matchesMood = mood == null || note.mood == mood
-            GridNote(note = note, dimmed = !(matchesQuery && matchesMood))
+            val matchesTag = tag == null || tag in note.tagList
+            GridNote(note = note, dimmed = !(matchesQuery && matchesMood && matchesTag))
         }
         GridState(
             notes = gridNotes,
             items = groupIntoItems(gridNotes),
             presentMoods = notes.map { it.mood }.distinct().sortedBy { it.ordinal },
             activeMood = mood,
+            presentTags = notes.flatMap { it.tagList }.distinct().sorted(),
+            activeTag = tag,
             links = links,
         )
     }
@@ -174,6 +183,8 @@ class NotesViewModel @Inject constructor(
                 trashed = trashed,
                 presentMoods = grid.presentMoods,
                 activeMoodFilter = grid.activeMood,
+                presentTags = grid.presentTags,
+                activeTagFilter = grid.activeTag,
                 searchQuery = searchQuery.value,
                 links = grid.links,
                 delight = delight,
@@ -192,6 +203,19 @@ class NotesViewModel @Inject constructor(
 
     fun toggleMoodFilter(mood: MoodCategory) =
         moodFilter.update { if (it == mood) null else mood }
+
+    fun toggleTagFilter(tag: String) =
+        tagFilter.update { if (it == tag) null else tag }
+
+    fun toggleTag(note: Note, tag: String) = viewModelScope.launch {
+        val current = note.tagList
+        val next = if (tag in current) current - tag else current + tag
+        repository.setTags(note.id, note.withTags(next).tags)
+    }
+
+    fun addTag(note: Note, tag: String) = viewModelScope.launch {
+        repository.setTags(note.id, note.withTags(note.tagList + tag).tags)
+    }
 
     fun toggleDogEar(note: Note) = viewModelScope.launch {
         repository.setDogEar(note.id, folded = !note.dogEarFolded, mood = note.mood)

@@ -40,6 +40,8 @@ data class Note(
     val photoPath: String? = null,
     /** Papier-Liniierung: blanko, liniert, kariert oder gepunktet. */
     val paper: PaperStyle = PaperStyle.BLANK,
+    /** Karteireiter: Tag-Labels, `\n`-getrennt; leer = keine Reiter. */
+    val tags: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
@@ -65,6 +67,17 @@ data class Note(
 
     /** true, wenn ein Foto angehängt ist (Polaroid). */
     val hasPhoto: Boolean get() = photoPath != null
+
+    /** Karteireiter als Liste (getrimmt, ohne Leereinträge). */
+    val tagList: List<String>
+        get() = tags.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+
+    /** true, wenn mindestens ein Karteireiter gesetzt ist. */
+    val hasTags: Boolean get() = tagList.isNotEmpty()
+
+    /** Setzt die Reiter neu (getrimmt, dedupliziert, ohne Leereinträge). */
+    fun withTags(list: List<String>): Note =
+        copy(tags = list.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString("\n"))
 
     /** Verbleibende Tage bis zum Zieltag (0 = heute, negativ = vorbei); null = kein Countdown. */
     fun daysUntil(now: Long): Long? = countdownAt?.let {

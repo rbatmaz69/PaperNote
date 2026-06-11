@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material.icons.rounded.Hub
+import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PushPin
@@ -69,6 +70,7 @@ fun MoodPickerSheet(
     onClip: (() -> Unit)? = null,
     onToggleSeal: () -> Unit,
     onToggleInvisibleInk: () -> Unit,
+    onEditTags: () -> Unit,
     onSetExpiry: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
@@ -390,6 +392,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (invisibleInk) "Geheimtinte entfernen" else "Mit Geheimtinte schreiben",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Karteireiter / Tags verwalten
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onEditTags() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.LocalOffer,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = "Reiter / Tags",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

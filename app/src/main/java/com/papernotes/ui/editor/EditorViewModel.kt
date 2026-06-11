@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -84,6 +85,12 @@ class EditorViewModel @Inject constructor(
     ) { id, notes ->
         notes.filter { it.id != id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Alle bereits vergebenen Karteireiter (über alle aktiven Notizen), für die Chip-Auswahl. */
+    val allTags: StateFlow<List<String>> =
+        repository.observeActiveNotes()
+            .map { notes -> notes.flatMap { it.tagList }.distinct().sorted() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private var loadedSession = -1
     private var saveJob: Job? = null
@@ -171,6 +178,22 @@ class EditorViewModel @Inject constructor(
 
     fun toggleInvisibleInk() {
         _note.update { it.copy(invisibleInk = !it.invisibleInk) }
+        scheduleSave()
+    }
+
+    /** Schaltet einen Karteireiter an der Notiz an oder aus. */
+    fun toggleTag(tag: String) {
+        _note.update { note ->
+            val current = note.tagList
+            val next = if (tag in current) current - tag else current + tag
+            note.withTags(next)
+        }
+        scheduleSave()
+    }
+
+    /** Legt einen neuen Karteireiter an (bzw. lässt vorhandene unverändert). */
+    fun addTag(tag: String) {
+        _note.update { it.withTags(it.tagList + tag) }
         scheduleSave()
     }
 

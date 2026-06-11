@@ -96,6 +96,7 @@ import com.papernotes.ui.components.SketchCanvas
 import com.papernotes.ui.components.SketchToolbar
 import com.papernotes.ui.components.StampCard
 import com.papernotes.ui.components.StampMotifPicker
+import com.papernotes.ui.components.TagPickerSheet
 import com.papernotes.ui.components.paperPress
 import com.papernotes.ui.components.paperRuling
 import java.time.LocalDate
@@ -164,8 +165,10 @@ fun EditorScreen(
     val focusRequestId by viewModel.focusRequest.collectAsStateWithLifecycle()
     val linkedNotes by viewModel.linkedNotes.collectAsStateWithLifecycle()
     val candidateNotes by viewModel.candidateNotes.collectAsStateWithLifecycle()
+    val allTags by viewModel.allTags.collectAsStateWithLifecycle()
 
     var showMood by remember { mutableStateOf(false) }
+    var showTags by remember { mutableStateOf(false) }
     var showingBack by remember { mutableStateOf(false) }
     var showReminder by remember { mutableStateOf(false) }
     var showExpiry by remember { mutableStateOf(false) }
@@ -545,6 +548,10 @@ fun EditorScreen(
                     viewModel.toggleInvisibleInk()
                     showMood = false
                 },
+                onEditTags = {
+                    showMood = false
+                    showTags = true
+                },
                 onSetExpiry = {
                     showMood = false
                     showExpiry = true
@@ -673,6 +680,22 @@ fun EditorScreen(
                     viewModel.toggleClip(otherId)
                 },
                 onDismiss = { showClip = false },
+            )
+        }
+
+        if (showTags) {
+            TagPickerSheet(
+                noteTags = note.tagList,
+                allTags = allTags,
+                onToggle = { tag ->
+                    haptics.tick()
+                    viewModel.toggleTag(tag)
+                },
+                onAdd = { tag ->
+                    haptics.tick()
+                    viewModel.addTag(tag)
+                },
+                onDismiss = { showTags = false },
             )
         }
     }

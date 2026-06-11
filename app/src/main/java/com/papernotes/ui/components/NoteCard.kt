@@ -324,6 +324,16 @@ fun NoteCard(
                     .offset(x = (-5).dp),
             )
         }
+
+        // Karteireiter am rechten Rand: farbige Tags, unterhalb des Eselsohrs.
+        if (note.hasTags) {
+            IndexTabs(
+                tags = note.tagList,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 6.dp, y = 30.dp),
+            )
+        }
     }
 }
 

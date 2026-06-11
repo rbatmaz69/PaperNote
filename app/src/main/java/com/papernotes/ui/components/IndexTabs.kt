@@ -1,0 +1,130 @@
+package com.papernotes.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.papernotes.domain.model.MoodCategory
+import com.papernotes.domain.model.earAccent
+
+/**
+ * Stabile Reiter-Farbe aus dem Tag-Namen: gleicher Name → immer dieselbe Farbe.
+ * Greift auf die vorhandene Stimmungs-Palette zurück (Light/Dark-sicher), kein neuer Farbsatz.
+ */
+@Composable
+@ReadOnlyComposable
+fun tabColor(tag: String): Color {
+    val palette = MoodCategory.entries.filter { it != MoodCategory.PLAIN }
+    val idx = tag.lowercase().hashCode().mod(palette.size)
+    return palette[idx].earAccent()
+}
+
+/** Lesbare Label-Farbe je nach Helligkeit des Reiter-Hintergrunds. */
+private fun labelOn(bg: Color): Color =
+    if (bg.luminance() > 0.5f) Color(0xFF2E2A26) else Color(0xFFF2ECE0)
+
+private val TabShape = RoundedCornerShape(topStart = 7.dp, bottomStart = 7.dp)
+
+/**
+ * Karteireiter, die seitlich aus der Karte ragen – gestapelt am rechten Rand.
+ * Maximal drei werden gezeigt; bei mehr erscheint ein „+n"-Reiter.
+ */
+@Composable
+fun IndexTabs(
+    tags: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    if (tags.isEmpty()) return
+    val shown = tags.take(3)
+    val extra = tags.size - shown.size
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        shown.forEach { tag -> Tab(label = tag, bg = tabColor(tag)) }
+        if (extra > 0) Tab(label = "+$extra", bg = MaterialTheme.colorScheme.surfaceVariant)
+    }
+}
+
+@Composable
+private fun Tab(label: String, bg: Color) {
+    Box(
+        modifier = Modifier
+            .shadow(1.dp, TabShape, clip = false)
+            .background(bg, TabShape)
+            .widthIn(max = 92.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = labelOn(bg),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * Filterleiste über dem Raster: ein Tipp auf einen Reiter blendet nicht passende Karten ab,
+ * ein erneuter Tipp hebt den Filter wieder auf. Horizontal scrollbar bei vielen Reitern.
+ */
+@Composable
+fun TagFilterRow(
+    presentTags: List<String>,
+    active: String?,
+    onToggle: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (presentTags.isEmpty()) return
+    val shape = RoundedCornerShape(8.dp)
+
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        presentTags.forEach { tag ->
+            val isActive = tag == active
+            val bg = tabColor(tag)
+            Box(
+                modifier = Modifier
+                    .paperPress(shape) { onToggle(tag) }
+                    .background(bg.copy(alpha = if (isActive) 1f else 0.35f), shape)
+                    .then(
+                        if (isActive) {
+                            Modifier.border(1.5.dp, MaterialTheme.colorScheme.onBackground, shape)
+                        } else Modifier,
+                    )
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = tag,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isActive) labelOn(bg) else MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}

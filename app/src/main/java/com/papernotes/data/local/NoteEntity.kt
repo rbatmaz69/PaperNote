@@ -27,6 +27,7 @@ data class NoteEntity(
     val countdownAt: Long?,
     val photoPath: String?,
     val paper: String,
+    val tags: String,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -50,6 +51,7 @@ fun NoteEntity.toDomain(): Note = Note(
     countdownAt = countdownAt,
     photoPath = photoPath,
     paper = PaperStyle.fromName(paper),
+    tags = tags,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -73,6 +75,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     countdownAt = countdownAt,
     photoPath = photoPath,
     paper = paper.name,
+    tags = tags,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

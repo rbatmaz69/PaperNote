@@ -96,6 +96,8 @@ import com.papernotes.ui.components.ExpirySheet
 import com.papernotes.ui.components.InkSearchBar
 import com.papernotes.ui.components.MoodFilterRow
 import com.papernotes.ui.components.MoodPickerSheet
+import com.papernotes.ui.components.TagFilterRow
+import com.papernotes.ui.components.TagPickerSheet
 import com.papernotes.ui.components.ClipPickerSheet
 import com.papernotes.ui.components.CountdownSheet
 import com.papernotes.ui.components.NoteCard
@@ -180,6 +182,7 @@ fun NotesScreen(
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
     var shareText by remember { mutableStateOf("") }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
+    var tagTarget by remember { mutableStateOf<Note?>(null) }
     var linkTarget by remember { mutableStateOf<Note?>(null) }
     var clipTarget by remember { mutableStateOf<Note?>(null) }
     var expiryTarget by remember { mutableStateOf<Note?>(null) }
@@ -288,6 +291,13 @@ fun NotesScreen(
                     presentMoods = state.presentMoods,
                     active = state.activeMoodFilter,
                     onToggle = viewModel::toggleMoodFilter,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
+                )
+
+                TagFilterRow(
+                    presentTags = state.presentTags,
+                    active = state.activeTagFilter,
+                    onToggle = viewModel::toggleTagFilter,
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
                 )
 
@@ -578,6 +588,10 @@ fun NotesScreen(
                 viewModel.toggleInvisibleInk(target)
                 moodTarget = null
             },
+            onEditTags = {
+                moodTarget = null
+                tagTarget = target
+            },
             onSetExpiry = {
                 expiryTarget = target
                 moodTarget = null
@@ -630,6 +644,19 @@ fun NotesScreen(
                 }
             },
             onDismiss = { moodTarget = null },
+        )
+    }
+
+    // Karteireiter-Sheet (vom Grid-Long-Press)
+    tagTarget?.let { target ->
+        // Live-Notiz, damit die Chip-Auswahl die letzte Änderung sofort spiegelt.
+        val live = state.notes.firstOrNull { it.note.id == target.id }?.note ?: target
+        TagPickerSheet(
+            noteTags = live.tagList,
+            allTags = state.presentTags,
+            onToggle = { tag -> viewModel.toggleTag(live, tag) },
+            onAdd = { tag -> viewModel.addTag(live, tag) },
+            onDismiss = { tagTarget = null },
         )
     }
 
