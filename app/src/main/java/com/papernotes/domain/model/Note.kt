@@ -42,6 +42,8 @@ data class Note(
     val paper: PaperStyle = PaperStyle.BLANK,
     /** Karteireiter: Tag-Labels, `\n`-getrennt; leer = keine Reiter. */
     val tags: String = "",
+    /** Manuelle Reihenfolge (Pinnwand): kleiner = weiter oben. 0 = noch nie angeordnet. */
+    val position: Long = 0L,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {

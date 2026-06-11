@@ -217,6 +217,17 @@ class NotesViewModel @Inject constructor(
         repository.setTags(note.id, note.withTags(note.tagList + tag).tags)
     }
 
+    /** Speichert die per Pinnwand gezogene Reihenfolge (Stapel-Mitglieder bleiben zusammenhängend). */
+    fun applyOrder(items: List<GridItem>) = viewModelScope.launch {
+        val ids = items.flatMap { item ->
+            when (item) {
+                is SoloItem -> listOf(item.gridNote.note.id)
+                is StackItem -> item.members.map { it.note.id }
+            }
+        }
+        repository.applyOrder(ids)
+    }
+
     fun toggleDogEar(note: Note) = viewModelScope.launch {
         repository.setDogEar(note.id, folded = !note.dogEarFolded, mood = note.mood)
     }

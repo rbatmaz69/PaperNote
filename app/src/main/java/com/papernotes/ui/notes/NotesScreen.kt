@@ -15,6 +15,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -23,6 +24,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,11 +46,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,10 +79,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -117,7 +124,9 @@ import com.papernotes.ui.components.WaxSealBreakOverlay
 import com.papernotes.ui.components.WaxSealBreakRequest
 import com.papernotes.ui.theme.ThemeViewModel
 import com.papernotes.util.PhotoStore
+import com.papernotes.util.rememberPaperHaptics
 import com.papernotes.util.sharePlainText
+import kotlin.math.sin
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -234,6 +243,49 @@ fun NotesScreen(
     var fabExpanded by remember { mutableStateOf(false) }
     var themeSheetOpen by remember { mutableStateOf(false) }
 
+    // Pinnwand: Anordnen-Modus zum freien Umsortieren der Karten.
+    val haptics = rememberPaperHaptics()
+    var arrangeMode by remember { mutableStateOf(false) }
+    // Position jedes Grid-Items (Solo & Stapel) in Root-Koordinaten – für die Ziel-Erkennung.
+    val itemBounds = remember { mutableStateMapOf<String, Rect>() }
+    // Lokale Reihenfolge nur während des Modus (der Flow überschreibt nicht mitten im Ziehen).
+    var orderedItems by remember { mutableStateOf<List<GridItem>>(emptyList()) }
+    var draggingKey by remember { mutableStateOf<String?>(null) }
+    var fingerAbs by remember { mutableStateOf(Offset.Zero) }
+    // Leichtes Wackeln als Modus-Signal.
+    val jiggle by rememberInfiniteTransition(label = "jiggle").animateFloat(
+        initialValue = 0f,
+        targetValue = 6.2831855f,
+        animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing)),
+        label = "jigglePhase",
+    )
+
+    fun finishArrange() {
+        if (arrangeMode) {
+            viewModel.applyOrder(orderedItems)
+            arrangeMode = false
+            draggingKey = null
+        }
+    }
+
+    // Beim Betreten des Modus die aktuelle Reihenfolge übernehmen.
+    LaunchedEffect(arrangeMode) {
+        if (arrangeMode) orderedItems = state.items
+    }
+    // Während des Modus neue Notizen/Änderungen einpflegen, ohne die Ordnung zu verlieren.
+    LaunchedEffect(state.items, arrangeMode) {
+        if (arrangeMode && draggingKey == null) {
+            val current = orderedItems.map { it.key }
+            if (state.items.map { it.key } != current) {
+                val byKey = state.items.associateBy { it.key }
+                // Bekannte in alter Reihenfolge behalten, neue hinten anhängen.
+                val kept = orderedItems.mapNotNull { byKey[it.key] }
+                val keptKeys = kept.map { it.key }.toSet()
+                orderedItems = kept + state.items.filter { it.key !in keptKeys }
+            }
+        }
+    }
+
     val contentPadding = WindowInsets.safeDrawing.asPaddingValues()
 
     // Veraltete Karten-Positionen entfernen (archiviert/gelöscht), damit kein roter Faden
@@ -308,11 +360,13 @@ fun NotesScreen(
                         EmptyState(modifier = Modifier.align(Alignment.Center))
                     }
                 } else {
+                    val displayItems = if (arrangeMode) orderedItems else state.items
                     LazyVerticalStaggeredGrid(
                         columns = StaggeredGridCells.Fixed(columns),
                         modifier = Modifier
                             .fillMaxSize()
-                            .transformable(transformState),
+                            .then(if (arrangeMode) Modifier else Modifier.transformable(transformState)),
+                        userScrollEnabled = !arrangeMode,
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
@@ -322,7 +376,60 @@ fun NotesScreen(
                         verticalItemSpacing = 14.dp,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        items(state.items, key = { it.key }) { item ->
+                        items(displayItems, key = { it.key }) { item ->
+                          val isDragged = item.key == draggingKey
+                          val arrangeBox = Modifier
+                              .animateItem()
+                              .then(
+                                  if (arrangeMode) {
+                                      Modifier
+                                          .onGloballyPositioned { itemBounds[item.key] = it.boundsInRoot() }
+                                          .zIndex(if (isDragged) 1f else 0f)
+                                          .graphicsLayer {
+                                              if (isDragged) {
+                                                  val c = itemBounds[item.key]?.center
+                                                  if (c != null) {
+                                                      translationX = fingerAbs.x - c.x
+                                                      translationY = fingerAbs.y - c.y
+                                                  }
+                                                  scaleX = 1.05f
+                                                  scaleY = 1.05f
+                                              } else {
+                                                  rotationZ = sin(jiggle + item.key.hashCode()) * 1.2f
+                                              }
+                                          }
+                                          .pointerInput(item.key) {
+                                              detectDragGestures(
+                                                  onDragStart = { offset ->
+                                                      draggingKey = item.key
+                                                      val b = itemBounds[item.key]
+                                                      fingerAbs = (b?.topLeft ?: Offset.Zero) + offset
+                                                      haptics.tick()
+                                                  },
+                                                  onDrag = { change, drag ->
+                                                      change.consume()
+                                                      fingerAbs += drag
+                                                      val targetKey = itemBounds.entries.firstOrNull { (k, r) ->
+                                                          k != draggingKey && r.contains(fingerAbs)
+                                                      }?.key
+                                                      if (targetKey != null) {
+                                                          val from = orderedItems.indexOfFirst { it.key == draggingKey }
+                                                          val to = orderedItems.indexOfFirst { it.key == targetKey }
+                                                          if (from in orderedItems.indices &&
+                                                              to in orderedItems.indices && from != to
+                                                          ) {
+                                                              orderedItems = orderedItems.toMutableList()
+                                                                  .also { m -> m.add(to, m.removeAt(from)) }
+                                                          }
+                                                      }
+                                                  },
+                                                  onDragEnd = { draggingKey = null },
+                                                  onDragCancel = { draggingKey = null },
+                                              )
+                                          }
+                                  } else Modifier,
+                              )
+                          Box(modifier = arrangeBox) {
                           when (item) {
                             is SoloItem -> {
                             val gridNote = item.gridNote
@@ -345,37 +452,8 @@ fun NotesScreen(
                                 }
                             }
                             val dropPx = with(density) { 20.dp.toPx() }
-                            val dismissState = rememberSwipeToDismissBoxState(
-                                confirmValueChange = { value ->
-                                    if (value != SwipeToDismissBoxValue.Settled) {
-                                        viewModel.archive(note.id)
-                                        true
-                                    } else false
-                                },
-                            )
 
-                            SwipeToDismissBox(
-                                state = dismissState,
-                                modifier = Modifier.animateItem(),
-                                backgroundContent = {
-                                    // Nur während des aktiven Swipes zeigen – sonst würde das
-                                    // Label hinter verblassten (gedimmten) Karten durchscheinen.
-                                    if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(8.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(
-                                                text = "archiviert",
-                                                style = MaterialTheme.typography.labelLarge,
-                                                color = MaterialTheme.colorScheme.outline,
-                                            )
-                                        }
-                                    }
-                                },
-                            ) {
+                            val card: @Composable () -> Unit = {
                                 if (!hidden) {
                                     with(sharedScope) {
                                         NoteCard(
@@ -384,6 +462,7 @@ fun NotesScreen(
                                             reminderDue = note.isReminderDue(now),
                                             now = now,
                                             onClick = {
+                                                if (arrangeMode) return@NoteCard
                                                 if (note.sealed) {
                                                     cardBounds[note.id]?.let { b ->
                                                         sealBreak = WaxSealBreakRequest(note.id, b, WaxRed)
@@ -392,11 +471,11 @@ fun NotesScreen(
                                                     onOpenNote(note.id)
                                                 }
                                             },
-                                            onToggleDogEar = { viewModel.toggleDogEar(note) },
-                                            onPickMood = { moodTarget = note },
-                                            onLongPress = { viewModel.togglePin(note) },
-                                            onCountdown = { countdownTarget = note },
-                                            onToggleStampDay = { day -> viewModel.toggleStamp(note, day) },
+                                            onToggleDogEar = { if (!arrangeMode) viewModel.toggleDogEar(note) },
+                                            onPickMood = { if (!arrangeMode) moodTarget = note },
+                                            onLongPress = { if (!arrangeMode) viewModel.togglePin(note) },
+                                            onCountdown = { if (!arrangeMode) countdownTarget = note },
+                                            onToggleStampDay = { day -> if (!arrangeMode) viewModel.toggleStamp(note, day) },
                                             modifier = Modifier
                                                 .graphicsLayer {
                                                     val a = appear.value
@@ -416,20 +495,57 @@ fun NotesScreen(
                                     }
                                 }
                             }
+
+                            if (arrangeMode) {
+                                card()
+                            } else {
+                                val dismissState = rememberSwipeToDismissBoxState(
+                                    confirmValueChange = { value ->
+                                        if (value != SwipeToDismissBoxValue.Settled) {
+                                            viewModel.archive(note.id)
+                                            true
+                                        } else false
+                                    },
+                                )
+                                SwipeToDismissBox(
+                                    state = dismissState,
+                                    backgroundContent = {
+                                        // Nur während des aktiven Swipes zeigen – sonst würde das
+                                        // Label hinter verblassten (gedimmten) Karten durchscheinen.
+                                        if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(8.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Text(
+                                                    text = "archiviert",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    color = MaterialTheme.colorScheme.outline,
+                                                )
+                                            }
+                                        }
+                                    },
+                                ) {
+                                    card()
+                                }
+                            }
                             }
                             is StackItem -> {
                                 NoteStack(
                                     item = item,
                                     now = now,
-                                    onOpenNote = onOpenNote,
-                                    onToggleDogEar = { viewModel.toggleDogEar(it) },
-                                    onPickMood = { moodTarget = it },
-                                    onToggleStampDay = { n, day -> viewModel.toggleStamp(n, day) },
-                                    onUnclip = { viewModel.unclip(it) },
-                                    onCountdown = { countdownTarget = it },
-                                    modifier = Modifier.animateItem(),
+                                    onOpenNote = { if (!arrangeMode) onOpenNote(it) },
+                                    onToggleDogEar = { if (!arrangeMode) viewModel.toggleDogEar(it) },
+                                    onPickMood = { if (!arrangeMode) moodTarget = it },
+                                    onToggleStampDay = { n, day -> if (!arrangeMode) viewModel.toggleStamp(n, day) },
+                                    onUnclip = { if (!arrangeMode) viewModel.unclip(it) },
+                                    onCountdown = { if (!arrangeMode) countdownTarget = it },
+                                    modifier = Modifier,
                                 )
                             }
+                          }
                           }
                         }
                     }
@@ -469,14 +585,26 @@ fun NotesScreen(
                     onClick = onOpenAgenda,
                 )
             }
-            TopAction(
-                icon = Icons.Rounded.Inventory2,
-                description = "Archiv & Papierkorb",
-                onClick = { drawerOpen = true },
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(end = 8.dp, top = contentPadding.calculateTopPadding() + 4.dp),
-            )
+            ) {
+                TopAction(
+                    icon = Icons.Rounded.SwapVert,
+                    description = if (arrangeMode) "Anordnen beenden" else "Anordnen",
+                    onClick = {
+                        haptics.tap()
+                        if (arrangeMode) finishArrange() else arrangeMode = true
+                    },
+                )
+                Spacer(Modifier.width(8.dp))
+                TopAction(
+                    icon = Icons.Rounded.Inventory2,
+                    description = "Archiv & Papierkorb",
+                    onClick = { drawerOpen = true },
+                )
+            }
 
             // Glücks-Teebeutel oben
             TeabagPull(
@@ -489,15 +617,33 @@ fun NotesScreen(
                     .padding(top = contentPadding.calculateTopPadding()),
             )
 
-            // Schubladen-Lasche unten mittig (Archiv + Papierkorb) – zusätzlicher Einstieg
-            DrawerHandle(
-                archiveCount = state.archived.size,
-                trashCount = state.trashed.size,
-                onOpen = { drawerOpen = true },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = contentPadding.calculateBottomPadding() + 4.dp),
-            )
+            // Schubladen-Lasche unten mittig (Archiv + Papierkorb) – zusätzlicher Einstieg.
+            // Im Anordnen-Modus weicht sie der „Fertig"-Pille.
+            if (!arrangeMode) {
+                DrawerHandle(
+                    archiveCount = state.archived.size,
+                    trashCount = state.trashed.size,
+                    onOpen = { drawerOpen = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = contentPadding.calculateBottomPadding() + 4.dp),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = contentPadding.calculateBottomPadding() + 16.dp)
+                        .paperPress(RoundedCornerShape(50)) { finishArrange() }
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
+                        .padding(horizontal = 28.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        text = "Fertig",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+            }
 
             // Leichter Scrim, wenn das FAB-Fächer offen ist (Tap daneben schließt es)
             if (fabExpanded) {
@@ -512,16 +658,18 @@ fun NotesScreen(
                 )
             }
 
-            // Runder "+"-Button mit Fächer (Notiz / Checkliste)
-            AddFab(
-                expanded = fabExpanded,
-                onExpandedChange = { fabExpanded = it },
-                onCreate = onCreateNote,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(24.dp)
-                    .padding(bottom = contentPadding.calculateBottomPadding()),
-            )
+            // Runder "+"-Button mit Fächer (Notiz / Checkliste) – im Anordnen-Modus ausgeblendet.
+            if (!arrangeMode) {
+                AddFab(
+                    expanded = fabExpanded,
+                    onExpandedChange = { fabExpanded = it },
+                    onCreate = onCreateNote,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(24.dp)
+                        .padding(bottom = contentPadding.calculateBottomPadding()),
+                )
+            }
         }
     }
 

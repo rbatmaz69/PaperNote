@@ -35,6 +35,7 @@ interface NoteRepository {
     suspend fun setPhoto(id: Long, path: String?)
     suspend fun setPaper(id: Long, paper: PaperStyle)
     suspend fun setTags(id: Long, tags: String)
+    suspend fun applyOrder(orderedIds: List<Long>)
     suspend fun purgeExpired()
     suspend fun notesWithReminders(): List<Note>
     suspend fun moveToTrash(id: Long)
@@ -110,6 +111,9 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun setTags(id: Long, tags: String) =
         dao.setTags(id, tags, System.currentTimeMillis())
+
+    override suspend fun applyOrder(orderedIds: List<Long>) =
+        dao.applyOrder(orderedIds)
 
     override suspend fun purgeExpired() =
         dao.purgeExpired(System.currentTimeMillis())

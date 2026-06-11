@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -12,7 +13,7 @@ interface NoteDao {
 
     @Query(
         "SELECT * FROM notes WHERE archived = 0 AND deletedAt IS NULL " +
-            "ORDER BY pinned DESC, updatedAt DESC",
+            "ORDER BY pinned DESC, position ASC, updatedAt DESC",
     )
     fun observeActive(): Flow<List<NoteEntity>>
 
@@ -72,6 +73,15 @@ interface NoteDao {
 
     @Query("UPDATE notes SET tags = :tags, updatedAt = :now WHERE id = :id")
     suspend fun setTags(id: Long, tags: String, now: Long)
+
+    @Query("UPDATE notes SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: Long, position: Long)
+
+    /** Schreibt die manuelle Reihenfolge: position = Index in [orderedIds]. */
+    @Transaction
+    suspend fun applyOrder(orderedIds: List<Long>) {
+        orderedIds.forEachIndexed { i, id -> setPosition(id, i.toLong()) }
+    }
 
     /** Abgelaufene Notizen still in den Papierkorb verschieben (Ablaufzeit dabei leeren). */
     @Query(
