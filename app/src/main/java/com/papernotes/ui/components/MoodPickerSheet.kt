@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +52,7 @@ fun MoodPickerSheet(
     pinned: Boolean,
     hasReminder: Boolean,
     sealed: Boolean,
+    invisibleInk: Boolean,
     hasExpiry: Boolean,
     hasCountdown: Boolean,
     hasPhoto: Boolean,
@@ -64,6 +68,7 @@ fun MoodPickerSheet(
     onCopy: () -> Unit,
     onClip: (() -> Unit)? = null,
     onToggleSeal: () -> Unit,
+    onToggleInvisibleInk: () -> Unit,
     onSetExpiry: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
@@ -77,6 +82,7 @@ fun MoodPickerSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -359,6 +365,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (sealed) "Siegel entfernen" else "Mit Wachs versiegeln",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Mit Geheimtinte schreiben / entfernen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onToggleInvisibleInk() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Whatshot,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (invisibleInk) "Geheimtinte entfernen" else "Mit Geheimtinte schreiben",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

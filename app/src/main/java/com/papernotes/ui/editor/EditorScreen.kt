@@ -516,6 +516,7 @@ fun EditorScreen(
                 pinned = note.pinned,
                 hasReminder = note.hasReminder,
                 sealed = note.sealed,
+                invisibleInk = note.invisibleInk,
                 hasExpiry = note.hasExpiry,
                 hasCountdown = note.hasCountdown,
                 hasPhoto = note.hasPhoto,
@@ -537,6 +538,11 @@ fun EditorScreen(
                 onToggleSeal = {
                     haptics.stamp()
                     viewModel.toggleSeal()
+                    showMood = false
+                },
+                onToggleInvisibleInk = {
+                    haptics.stamp()
+                    viewModel.toggleInvisibleInk()
                     showMood = false
                 },
                 onSetExpiry = {

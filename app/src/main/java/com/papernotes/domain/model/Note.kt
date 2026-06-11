@@ -22,6 +22,8 @@ data class Note(
     val archived: Boolean = false,
     /** Mit Wachs versiegelt: Inhalt im Grid verborgen, bis das Siegel aufgebrochen wird. */
     val sealed: Boolean = false,
+    /** Geheimtinte: Text im Grid verborgen und nur beim Gedrückthalten der Karte lesbar. */
+    val invisibleInk: Boolean = false,
     /** Zeitstempel der Knüll-Löschung; null = nicht im Papierkorb. */
     val deletedAt: Long? = null,
     /** Geplante Erinnerungszeit (Epoch-Millis); null = keine Erinnerung. */

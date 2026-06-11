@@ -169,6 +169,11 @@ class EditorViewModel @Inject constructor(
         scheduleSave()
     }
 
+    fun toggleInvisibleInk() {
+        _note.update { it.copy(invisibleInk = !it.invisibleInk) }
+        scheduleSave()
+    }
+
     /** Setzt/entfernt die Ablaufzeit (vergängliche Notiz); rein persistiert, kein Alarm nötig. */
     fun setExpiry(at: Long?) {
         _note.update { it.copy(expiresAt = at) }

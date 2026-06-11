@@ -229,17 +229,21 @@ fun NoteCard(
                                 )
                             }
                         }
-                        NoteType.TEXT -> Text(
-                            text = note.preview,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (note.body.isBlank()) {
-                                MaterialTheme.colorScheme.outline
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            maxLines = 6,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        NoteType.TEXT -> if (note.invisibleInk && note.body.isNotBlank()) {
+                            InvisibleInkText(text = note.preview, onOpen = onClick)
+                        } else {
+                            Text(
+                                text = note.preview,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (note.body.isBlank()) {
+                                    MaterialTheme.colorScheme.outline
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                maxLines = 6,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
 
