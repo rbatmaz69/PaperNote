@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AddAPhoto
 import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material.icons.rounded.Hub
@@ -57,6 +58,7 @@ fun MoodPickerSheet(
     onAttachPhoto: () -> Unit,
     onLink: () -> Unit,
     onShare: () -> Unit,
+    onCopy: () -> Unit,
     onClip: (() -> Unit)? = null,
     onToggleSeal: () -> Unit,
     onSetExpiry: () -> Unit,
@@ -274,6 +276,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = "Als Papierflieger teilen",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Text in die Zwischenablage kopieren
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onCopy() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.ContentCopy,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = "Text kopieren",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

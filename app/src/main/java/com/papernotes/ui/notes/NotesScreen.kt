@@ -68,8 +68,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -128,6 +130,7 @@ fun NotesScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentTheme by themeViewModel.theme.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
 
     // Leichter Zeit-Ticker: lässt fällige Erinnerungen live ins „Flattern" übergehen.
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -602,6 +605,10 @@ fun NotesScreen(
                 } else {
                     context.sharePlainText(text)
                 }
+            },
+            onCopy = {
+                clipboard.setText(AnnotatedString(target.toShareText()))
+                moodTarget = null
             },
             onDelete = {
                 val bounds = cardBounds[target.id]

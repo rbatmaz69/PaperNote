@@ -64,8 +64,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsCompat
@@ -122,6 +124,7 @@ fun EditorScreen(
     val haptics = rememberPaperHaptics()
     val view = LocalView.current
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
 
     val notifPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -563,6 +566,10 @@ fun EditorScreen(
                     } else {
                         context.sharePlainText(text)
                     }
+                },
+                onCopy = {
+                    showMood = false
+                    clipboard.setText(AnnotatedString(note.toShareText()))
                 },
                 onDelete = {
                     showMood = false
