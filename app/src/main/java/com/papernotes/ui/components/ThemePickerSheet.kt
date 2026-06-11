@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.FileOpen
+import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +45,8 @@ fun ThemePickerSheet(
     selected: PaperTheme,
     onPick: (PaperTheme) -> Unit,
     onDismiss: () -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
 ) {
     val haptics = rememberPaperHaptics()
     val ink = MaterialTheme.colorScheme.onBackground
@@ -79,7 +84,43 @@ fun ThemePickerSheet(
                     )
                 }
             }
+
+            Text(
+                text = "Sicherung",
+                style = MaterialTheme.typography.titleMedium,
+                color = ink,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            BackupRow(icon = Icons.Rounded.Save, label = "Sichern") {
+                haptics.tap()
+                onExport()
+            }
+            BackupRow(icon = Icons.Rounded.FileOpen, label = "Importieren") {
+                haptics.tap()
+                onImport()
+            }
         }
+    }
+}
+
+@Composable
+private fun BackupRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .paperPress(RoundedCornerShape(14.dp), onClick = onClick)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = ink)
+        Text(text = label, style = MaterialTheme.typography.labelLarge, color = ink)
     }
 }
 

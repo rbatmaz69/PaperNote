@@ -45,6 +45,9 @@ interface NoteRepository {
     fun observeLinks(): Flow<List<NoteLink>>
     suspend fun linkNotes(a: Long, b: Long)
     suspend fun unlinkNotes(a: Long, b: Long)
+    suspend fun notesForBackup(): List<Note>
+    suspend fun allLinks(): List<NoteLink>
+    suspend fun insertRaw(note: Note): Long
 }
 
 @Singleton
@@ -147,4 +150,13 @@ class NoteRepositoryImpl @Inject constructor(
         val link = linkOf(a, b)
         dao.deleteLink(link.aId, link.bId)
     }
+
+    override suspend fun notesForBackup(): List<Note> =
+        dao.notesForBackup().map { it.toDomain() }
+
+    override suspend fun allLinks(): List<NoteLink> =
+        dao.allLinks().map { it.toDomain() }
+
+    override suspend fun insertRaw(note: Note): Long =
+        dao.insert(note.copy(id = 0L).toEntity())
 }

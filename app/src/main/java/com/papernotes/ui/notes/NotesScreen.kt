@@ -218,6 +218,22 @@ fun NotesScreen(
         }
     }
 
+    // Sicherung: ZIP schreiben/lesen über die System-Dateiauswahl (keine Berechtigung nötig).
+    fun backupToast(count: Int, exporting: Boolean) {
+        val msg = when {
+            count < 0 -> "Sicherung fehlgeschlagen"
+            exporting -> "$count Notizen gesichert"
+            else -> "$count Notizen importiert"
+        }
+        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+    }
+    val createBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri -> uri?.let { viewModel.exportBackup(context, it) { n -> backupToast(n, exporting = true) } } }
+    val openBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let { viewModel.importBackup(context, it) { n -> backupToast(n, exporting = false) } } }
+
     // Welche Karten schon „eingeflogen" sind – neue Notizen fallen einmalig herein.
     val introducedIds = remember { mutableStateMapOf<Long, Unit>() }
     var introSeeded by remember { mutableStateOf(false) }
@@ -907,6 +923,14 @@ fun NotesScreen(
             selected = currentTheme,
             onPick = { themeViewModel.setTheme(it) },
             onDismiss = { themeSheetOpen = false },
+            onExport = {
+                themeSheetOpen = false
+                createBackup.launch("papernotes-sicherung-${backupDateStamp()}.zip")
+            },
+            onImport = {
+                themeSheetOpen = false
+                openBackup.launch(arrayOf("application/zip"))
+            },
         )
     }
 
@@ -921,6 +945,10 @@ fun NotesScreen(
         )
     }
 }
+
+/** Datumsstempel (JJJJ-MM-TT) für den vorgeschlagenen Sicherungs-Dateinamen. */
+private fun backupDateStamp(): String =
+    java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.GERMAN).format(java.util.Date())
 
 /** Kleiner, runder Icon-Button für die obere Leiste (Suche / Archiv). */
 @Composable

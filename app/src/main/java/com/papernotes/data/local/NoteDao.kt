@@ -29,6 +29,13 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getById(id: Long): NoteEntity?
 
+    /** Alle aktiven & archivierten Notizen (ohne Papierkorb) für die Sicherung. */
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL")
+    suspend fun notesForBackup(): List<NoteEntity>
+
+    @Query("SELECT * FROM note_links")
+    suspend fun allLinks(): List<NoteLinkEntity>
+
     @Query("SELECT COUNT(*) FROM notes WHERE createdAt >= :since AND deletedAt IS NULL")
     fun countCreatedSince(since: Long): Flow<Int>
 

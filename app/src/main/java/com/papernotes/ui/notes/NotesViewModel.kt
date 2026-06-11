@@ -217,6 +217,25 @@ class NotesViewModel @Inject constructor(
         repository.setTags(note.id, note.withTags(note.tagList + tag).tags)
     }
 
+    /** Exportiert alle Notizen (inkl. Fotos & Verknüpfungen) als ZIP nach [uri]. */
+    fun exportBackup(context: android.content.Context, uri: android.net.Uri, onResult: (Int) -> Unit) =
+        viewModelScope.launch {
+            onResult(
+                runCatching {
+                    com.papernotes.data.backup.BackupManager.export(context, repository, uri)
+                }.getOrDefault(-1),
+            )
+        }
+
+    fun importBackup(context: android.content.Context, uri: android.net.Uri, onResult: (Int) -> Unit) =
+        viewModelScope.launch {
+            onResult(
+                runCatching {
+                    com.papernotes.data.backup.BackupManager.import(context, repository, uri)
+                }.getOrDefault(-1),
+            )
+        }
+
     /** Speichert die per Pinnwand gezogene Reihenfolge (Stapel-Mitglieder bleiben zusammenhängend). */
     fun applyOrder(items: List<GridItem>) = viewModelScope.launch {
         val ids = items.flatMap { item ->
