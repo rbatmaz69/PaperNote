@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
+import com.papernotes.domain.model.PaperStyle
 
 @Entity(tableName = "notes")
 data class NoteEntity(
@@ -24,6 +25,7 @@ data class NoteEntity(
     val clipId: Long?,
     val countdownAt: Long?,
     val photoPath: String?,
+    val paper: String,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -45,6 +47,7 @@ fun NoteEntity.toDomain(): Note = Note(
     clipId = clipId,
     countdownAt = countdownAt,
     photoPath = photoPath,
+    paper = PaperStyle.fromName(paper),
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -66,6 +69,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     clipId = clipId,
     countdownAt = countdownAt,
     photoPath = photoPath,
+    paper = paper.name,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

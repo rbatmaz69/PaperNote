@@ -556,9 +556,14 @@ fun NotesScreen(
             hasExpiry = target.hasExpiry,
             hasCountdown = target.hasCountdown,
             hasPhoto = target.hasPhoto,
+            paper = target.paper,
             onPick = { mood ->
                 viewModel.setMood(target, mood)
                 moodTarget = null
+            },
+            onPickPaper = { style ->
+                viewModel.setPaper(target, style)
+                moodTarget = target.copy(paper = style) // Auswahl sofort im Sheet spiegeln
             },
             onTogglePin = {
                 viewModel.togglePin(target)

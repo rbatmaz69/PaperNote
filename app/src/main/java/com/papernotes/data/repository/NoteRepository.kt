@@ -6,6 +6,7 @@ import com.papernotes.data.local.toEntity
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteLink
+import com.papernotes.domain.model.PaperStyle
 import com.papernotes.domain.model.linkOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -31,6 +32,7 @@ interface NoteRepository {
     suspend fun setClip(id: Long, clipId: Long?)
     suspend fun setCountdown(id: Long, at: Long?)
     suspend fun setPhoto(id: Long, path: String?)
+    suspend fun setPaper(id: Long, paper: PaperStyle)
     suspend fun purgeExpired()
     suspend fun notesWithReminders(): List<Note>
     suspend fun moveToTrash(id: Long)
@@ -97,6 +99,9 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun setPhoto(id: Long, path: String?) =
         dao.setPhoto(id, path, System.currentTimeMillis())
+
+    override suspend fun setPaper(id: Long, paper: PaperStyle) =
+        dao.setPaper(id, paper.name, System.currentTimeMillis())
 
     override suspend fun purgeExpired() =
         dao.purgeExpired(System.currentTimeMillis())

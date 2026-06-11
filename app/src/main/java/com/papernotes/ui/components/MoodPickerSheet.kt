@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.papernotes.domain.model.MoodCategory
+import com.papernotes.domain.model.PaperStyle
 import com.papernotes.domain.model.earAccent
 import com.papernotes.ui.theme.Terracotta
 
@@ -51,7 +52,9 @@ fun MoodPickerSheet(
     hasExpiry: Boolean,
     hasCountdown: Boolean,
     hasPhoto: Boolean,
+    paper: PaperStyle,
     onPick: (MoodCategory) -> Unit,
+    onPickPaper: (PaperStyle) -> Unit,
     onTogglePin: () -> Unit,
     onSetReminder: () -> Unit,
     onSetCountdown: () -> Unit,
@@ -98,6 +101,36 @@ fun MoodPickerSheet(
                             .then(
                                 if (isSelected) {
                                     Modifier.border(2.5.dp, ink, CircleShape)
+                                } else Modifier,
+                            ),
+                    )
+                }
+            }
+
+            // Papier-Liniierung wählen (Live-Vorschau je Swatch)
+            Text(
+                text = "Papier",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PaperStyle.entries.forEach { style ->
+                    val selected = style == paper
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .paperPress(RoundedCornerShape(8.dp)) { onPickPaper(style) }
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(8.dp),
+                            )
+                            .paperRuling(style, ink, spacing = 9.dp)
+                            .then(
+                                if (selected) {
+                                    Modifier.border(2.5.dp, ink, RoundedCornerShape(8.dp))
                                 } else Modifier,
                             ),
                     )

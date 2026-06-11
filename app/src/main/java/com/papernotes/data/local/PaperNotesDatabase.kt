@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NoteEntity::class, NoteLinkEntity::class],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 abstract class PaperNotesDatabase : RoomDatabase() {
@@ -80,6 +80,13 @@ abstract class PaperNotesDatabase : RoomDatabase() {
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE notes ADD COLUMN photoPath TEXT")
+            }
+        }
+
+        /** v11: Papier-Liniierung (blanko/liniert/kariert/gepunktet). */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN paper TEXT NOT NULL DEFAULT 'BLANK'")
             }
         }
     }

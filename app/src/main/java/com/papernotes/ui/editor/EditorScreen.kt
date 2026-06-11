@@ -97,6 +97,7 @@ import com.papernotes.ui.components.SketchToolbar
 import com.papernotes.ui.components.StampCard
 import com.papernotes.ui.components.StampMotifPicker
 import com.papernotes.ui.components.paperPress
+import com.papernotes.ui.components.paperRuling
 import java.time.LocalDate
 import com.papernotes.util.findActivity
 import com.papernotes.util.PhotoStore
@@ -348,6 +349,7 @@ fun EditorScreen(
                         onRemove = viewModel::removeItem,
                         modifier = Modifier
                             .fillMaxSize()
+                            .paperRuling(note.paper, ink)
                             .padding(horizontal = 24.dp),
                         header = {
                             TitleField(
@@ -445,6 +447,7 @@ fun EditorScreen(
                     NoteType.TEXT -> Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .paperRuling(note.paper, ink)
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 24.dp),
                     ) {
@@ -516,10 +519,15 @@ fun EditorScreen(
                 hasExpiry = note.hasExpiry,
                 hasCountdown = note.hasCountdown,
                 hasPhoto = note.hasPhoto,
+                paper = note.paper,
                 onPick = {
                     haptics.tick()
                     viewModel.setMood(it)
                     showMood = false
+                },
+                onPickPaper = {
+                    haptics.tick()
+                    viewModel.setPaper(it)
                 },
                 onTogglePin = {
                     haptics.tap()

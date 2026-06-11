@@ -10,6 +10,7 @@ import com.papernotes.domain.model.DailyDelight
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteLink
+import com.papernotes.domain.model.PaperStyle
 import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -228,6 +229,10 @@ class NotesViewModel @Inject constructor(
 
     fun setPhoto(note: Note, path: String?) = viewModelScope.launch {
         repository.setPhoto(note.id, path)
+    }
+
+    fun setPaper(note: Note, style: PaperStyle) = viewModelScope.launch {
+        repository.setPaper(note.id, style)
     }
 
     fun linkNotes(a: Long, b: Long) = viewModelScope.launch { repository.linkNotes(a, b) }

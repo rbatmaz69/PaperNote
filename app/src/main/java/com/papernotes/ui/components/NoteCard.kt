@@ -174,7 +174,9 @@ fun NoteCard(
           if (flip <= 90f) {
             Column(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .defaultMinSize(minHeight = 96.dp)
+                    .paperRuling(note.paper, MaterialTheme.colorScheme.onSurface)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {

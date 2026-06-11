@@ -32,6 +32,7 @@ object DatabaseModule {
                 PaperNotesDatabase.MIGRATION_7_8,
                 PaperNotesDatabase.MIGRATION_8_9,
                 PaperNotesDatabase.MIGRATION_9_10,
+                PaperNotesDatabase.MIGRATION_10_11,
             )
             .build()
 

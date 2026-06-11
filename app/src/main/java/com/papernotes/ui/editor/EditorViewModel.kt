@@ -12,6 +12,7 @@ import com.papernotes.domain.StampMotif
 import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
+import com.papernotes.domain.model.PaperStyle
 import java.time.LocalDate
 import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -183,6 +184,12 @@ class EditorViewModel @Inject constructor(
     /** Setzt/entfernt den Foto-Dateinamen (Bild liegt bereits auf Platte). */
     fun setPhoto(path: String?) {
         _note.update { it.copy(photoPath = path) }
+        scheduleSave()
+    }
+
+    /** Wählt die Papier-Liniierung. */
+    fun setPaper(style: PaperStyle) {
+        _note.update { it.copy(paper = style) }
         scheduleSave()
     }
 

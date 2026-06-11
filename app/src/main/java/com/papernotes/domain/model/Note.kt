@@ -36,6 +36,8 @@ data class Note(
     val countdownAt: Long? = null,
     /** Foto-Polaroid: interner Dateiname im App-Speicher; null = kein Foto. */
     val photoPath: String? = null,
+    /** Papier-Liniierung: blanko, liniert, kariert oder gepunktet. */
+    val paper: PaperStyle = PaperStyle.BLANK,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
