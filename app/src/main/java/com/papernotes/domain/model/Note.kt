@@ -27,6 +27,8 @@ data class Note(
     val expiresAt: Long? = null,
     /** Text auf der Rückseite des Blatts (für jeden Notiz-Typ; leer = unbeschriebene Rückseite). */
     val backText: String = "",
+    /** Büroklammer-Stapel: Notizen mit gleichem clipId bilden ein Bündel. null = nicht geklammert. */
+    val clipId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {

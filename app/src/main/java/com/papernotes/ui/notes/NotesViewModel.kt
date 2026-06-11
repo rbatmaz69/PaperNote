@@ -31,8 +31,33 @@ data class GridNote(
     val dimmed: Boolean,
 )
 
+/**
+ * Eine Grid-Zelle: entweder eine einzelne Notiz ([SoloItem]) oder ein Büroklammer-Stapel
+ * ([StackItem]) aus mehreren zusammengeklammerten Notizen.
+ */
+sealed interface GridItem {
+    val key: String
+    val dimmed: Boolean
+}
+
+data class SoloItem(val gridNote: GridNote) : GridItem {
+    override val key: String get() = "note-${gridNote.note.id}"
+    override val dimmed: Boolean get() = gridNote.dimmed
+}
+
+/** Stapel: [cover] liegt oben, [members] enthält alle (inkl. Cover) in Sortier-Reihenfolge. */
+data class StackItem(
+    val clipId: Long,
+    val cover: GridNote,
+    val members: List<GridNote>,
+) : GridItem {
+    override val key: String get() = "clip-$clipId"
+    override val dimmed: Boolean get() = members.all { it.dimmed }
+}
+
 data class NotesUiState(
     val notes: List<GridNote> = emptyList(),
+    val items: List<GridItem> = emptyList(),
     val archived: List<Note> = emptyList(),
     val trashed: List<Note> = emptyList(),
     val presentMoods: List<MoodCategory> = emptyList(),
@@ -44,13 +69,37 @@ data class NotesUiState(
     val statsLine: String = "",
 )
 
-/** Zwischenergebnis: Grid-Notizen + Filter-Metadaten + die roten Fäden. */
+/** Zwischenergebnis: Grid-Notizen + (zu Stapeln gruppierte) Grid-Items + Filter-Metadaten + Fäden. */
 private data class GridState(
     val notes: List<GridNote>,
+    val items: List<GridItem>,
     val presentMoods: List<MoodCategory>,
     val activeMood: MoodCategory?,
     val links: List<NoteLink>,
 )
+
+/**
+ * Fasst die (bereits sortierten) Grid-Notizen zu Grid-Items zusammen: Notizen mit gleichem
+ * `clipId` werden – sofern ≥2 aktiv sichtbar – an der Position der obersten zu einem [StackItem]
+ * gebündelt; alle anderen bleiben [SoloItem]. Die ursprüngliche Reihenfolge bleibt erhalten.
+ */
+private fun groupIntoItems(notes: List<GridNote>): List<GridItem> {
+    val byClip = notes.filter { it.note.clipId != null }.groupBy { it.note.clipId!! }
+    val emitted = mutableSetOf<Long>()
+    val items = mutableListOf<GridItem>()
+    for (gridNote in notes) {
+        val clipId = gridNote.note.clipId
+        val group = clipId?.let { byClip[it] }
+        if (clipId != null && group != null && group.size >= 2) {
+            if (emitted.add(clipId)) {
+                items += StackItem(clipId = clipId, cover = group.first(), members = group)
+            }
+        } else {
+            items += SoloItem(gridNote)
+        }
+    }
+    return items
+}
 
 @HiltViewModel
 class NotesViewModel @Inject constructor(
@@ -78,18 +127,20 @@ class NotesViewModel @Inject constructor(
         repository.observeLinks(),
     ) { notes, query, mood, links ->
         val trimmed = query.trim()
+        val gridNotes = notes.map { note ->
+            // Versiegelte Notizen tauchen nicht in Suchtreffern auf (kein Inhalts-Leak),
+            // bleiben aber ohne aktive Suche normal im Grid sichtbar.
+            val matchesQuery = trimmed.isEmpty() ||
+                (!note.sealed && (
+                    note.title.contains(trimmed, ignoreCase = true) ||
+                        note.body.contains(trimmed, ignoreCase = true)
+                    ))
+            val matchesMood = mood == null || note.mood == mood
+            GridNote(note = note, dimmed = !(matchesQuery && matchesMood))
+        }
         GridState(
-            notes = notes.map { note ->
-                // Versiegelte Notizen tauchen nicht in Suchtreffern auf (kein Inhalts-Leak),
-                // bleiben aber ohne aktive Suche normal im Grid sichtbar.
-                val matchesQuery = trimmed.isEmpty() ||
-                    (!note.sealed && (
-                        note.title.contains(trimmed, ignoreCase = true) ||
-                            note.body.contains(trimmed, ignoreCase = true)
-                        ))
-                val matchesMood = mood == null || note.mood == mood
-                GridNote(note = note, dimmed = !(matchesQuery && matchesMood))
-            },
+            notes = gridNotes,
+            items = groupIntoItems(gridNotes),
             presentMoods = notes.map { it.mood }.distinct().sortedBy { it.ordinal },
             activeMood = mood,
             links = links,
@@ -117,6 +168,7 @@ class NotesViewModel @Inject constructor(
         ) { grid, archived, trashed, available, stats ->
             NotesUiState(
                 notes = grid.notes,
+                items = grid.items,
                 archived = archived,
                 trashed = trashed,
                 presentMoods = grid.presentMoods,
@@ -173,6 +225,26 @@ class NotesViewModel @Inject constructor(
     fun linkNotes(a: Long, b: Long) = viewModelScope.launch { repository.linkNotes(a, b) }
 
     fun unlinkNotes(a: Long, b: Long) = viewModelScope.launch { repository.unlinkNotes(a, b) }
+
+    /**
+     * Klammert [otherId] an den Stapel von [target] (bzw. löst sie wieder). Hat [target] noch
+     * keinen Stapel, wird einer mit der eigenen Id als clipId eröffnet.
+     */
+    fun toggleClip(target: Note, otherId: Long) = viewModelScope.launch {
+        val groupId = target.clipId ?: target.id
+        if (target.clipId == null) repository.setClip(target.id, groupId)
+        if (isInGroup(otherId, groupId)) {
+            repository.setClip(otherId, null)
+        } else {
+            repository.setClip(otherId, groupId)
+        }
+    }
+
+    /** Löst eine einzelne Notiz aus ihrem Stapel. */
+    fun unclip(note: Note) = viewModelScope.launch { repository.setClip(note.id, null) }
+
+    private fun isInGroup(id: Long, groupId: Long): Boolean =
+        uiState.value.notes.any { it.note.id == id && it.note.clipId == groupId }
 
     /** Einmal-Event (Notiz-Id), wenn ein Stempel die Strähne auf eine 7er-Marke hebt. */
     private val _stampMilestone = MutableSharedFlow<Long>(extraBufferCapacity = 1)

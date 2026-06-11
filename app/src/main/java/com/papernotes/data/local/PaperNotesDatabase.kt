@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NoteEntity::class, NoteLinkEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class PaperNotesDatabase : RoomDatabase() {
@@ -59,6 +59,13 @@ abstract class PaperNotesDatabase : RoomDatabase() {
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE notes ADD COLUMN backText TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** v8: Büroklammer-Stapel (Notizen mit gleichem clipId bilden ein Bündel). */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN clipId INTEGER")
             }
         }
     }

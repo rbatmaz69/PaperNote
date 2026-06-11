@@ -77,6 +77,7 @@ import com.papernotes.domain.toShareText
 import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.DogEar
 import com.papernotes.ui.components.ExpirySheet
+import com.papernotes.ui.components.ClipPickerSheet
 import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.NoteLinkPickerSheet
@@ -143,6 +144,7 @@ fun EditorScreen(
     var showReminder by remember { mutableStateOf(false) }
     var showExpiry by remember { mutableStateOf(false) }
     var showLinkPicker by remember { mutableStateOf(false) }
+    var showClip by remember { mutableStateOf(false) }
     var confettiKey by remember { mutableStateOf<Int?>(null) }
     var editorBounds by remember { mutableStateOf(Rect.Zero) }
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
@@ -493,6 +495,10 @@ fun EditorScreen(
                     showMood = false
                     showLinkPicker = true
                 },
+                onClip = {
+                    showMood = false
+                    showClip = true
+                },
                 onShare = {
                     showMood = false
                     val text = note.toShareText()
@@ -561,6 +567,20 @@ fun EditorScreen(
                     }
                 },
                 onDismiss = { showLinkPicker = false },
+            )
+        }
+
+        if (showClip) {
+            val groupId = note.clipId ?: note.id
+            val clippedIds = candidateNotes.filter { it.clipId == groupId }.map { it.id }.toSet()
+            ClipPickerSheet(
+                candidates = candidateNotes,
+                clippedIds = clippedIds,
+                onToggle = { otherId ->
+                    haptics.tick()
+                    viewModel.toggleClip(otherId)
+                },
+                onDismiss = { showClip = false },
             )
         }
     }

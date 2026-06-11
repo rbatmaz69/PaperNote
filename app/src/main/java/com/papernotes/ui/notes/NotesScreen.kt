@@ -38,7 +38,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -91,8 +91,10 @@ import com.papernotes.ui.components.ExpirySheet
 import com.papernotes.ui.components.InkSearchBar
 import com.papernotes.ui.components.MoodFilterRow
 import com.papernotes.ui.components.MoodPickerSheet
+import com.papernotes.ui.components.ClipPickerSheet
 import com.papernotes.ui.components.NoteCard
 import com.papernotes.ui.components.NoteLinkPickerSheet
+import com.papernotes.ui.components.NoteStack
 import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
@@ -171,6 +173,7 @@ fun NotesScreen(
     var shareText by remember { mutableStateOf("") }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
     var linkTarget by remember { mutableStateOf<Note?>(null) }
+    var clipTarget by remember { mutableStateOf<Note?>(null) }
     var expiryTarget by remember { mutableStateOf<Note?>(null) }
 
     // Welche Karten schon „eingeflogen" sind – neue Notizen fallen einmalig herein.
@@ -279,7 +282,10 @@ fun NotesScreen(
                         verticalItemSpacing = 14.dp,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        itemsIndexed(state.notes, key = { _, n -> n.note.id }) { _, gridNote ->
+                        items(state.items, key = { it.key }) { item ->
+                          when (item) {
+                            is SoloItem -> {
+                            val gridNote = item.gridNote
                             val note = gridNote.note
                             val hidden = crumple?.noteId == note.id
 
@@ -369,6 +375,20 @@ fun NotesScreen(
                                     }
                                 }
                             }
+                            }
+                            is StackItem -> {
+                                NoteStack(
+                                    item = item,
+                                    now = now,
+                                    onOpenNote = onOpenNote,
+                                    onToggleDogEar = { viewModel.toggleDogEar(it) },
+                                    onPickMood = { moodTarget = it },
+                                    onToggleStampDay = { n, day -> viewModel.toggleStamp(n, day) },
+                                    onUnclip = { viewModel.unclip(it) },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                          }
                         }
                     }
                 }
@@ -528,6 +548,10 @@ fun NotesScreen(
                 moodTarget = null
                 linkTarget = target
             },
+            onClip = {
+                moodTarget = null
+                clipTarget = target
+            },
             onShare = {
                 val bounds = cardBounds[target.id]
                 val text = target.toShareText()
@@ -602,6 +626,22 @@ fun NotesScreen(
                 }
             },
             onDismiss = { linkTarget = null },
+        )
+    }
+
+    // Büroklammer-Auswahl: andere Notizen an den Stapel klammern/lösen
+    clipTarget?.let { target ->
+        val groupId = target.clipId ?: target.id
+        val clippedIds = state.notes
+            .map { it.note }
+            .filter { it.id != target.id && it.clipId == groupId }
+            .map { it.id }
+            .toSet()
+        ClipPickerSheet(
+            candidates = state.notes.map { it.note }.filter { it.id != target.id },
+            clippedIds = clippedIds,
+            onToggle = { otherId -> viewModel.toggleClip(target, otherId) },
+            onDismiss = { clipTarget = null },
         )
     }
 

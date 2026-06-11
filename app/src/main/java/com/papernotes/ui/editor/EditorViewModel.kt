@@ -324,6 +324,25 @@ class EditorViewModel @Inject constructor(
         if (id != 0L) repository.unlinkNotes(id, otherId)
     }
 
+    // --- Büroklammer-Stapel ---
+
+    /** Klammert [otherId] an den Stapel dieser Notiz (bzw. löst sie wieder). */
+    fun toggleClip(otherId: Long) = viewModelScope.launch {
+        val id = ensureSaved()
+        if (id == otherId) return@launch
+        val groupId = _note.value.clipId ?: id
+        if (_note.value.clipId == null) {
+            repository.setClip(id, groupId)
+            _note.update { if (it.clipId == null) it.copy(clipId = groupId) else it }
+        }
+        val other = repository.getNote(otherId) ?: return@launch
+        if (other.clipId == groupId) {
+            repository.setClip(otherId, null)
+        } else {
+            repository.setClip(otherId, groupId)
+        }
+    }
+
     /** Stellt sicher, dass die Notiz eine id hat (für Verknüpfungen), und gibt sie zurück. */
     private suspend fun ensureSaved(): Long {
         val snapshot = _note.value

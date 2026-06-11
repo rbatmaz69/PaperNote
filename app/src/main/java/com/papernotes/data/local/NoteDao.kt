@@ -55,6 +55,9 @@ interface NoteDao {
     @Query("UPDATE notes SET expiresAt = :at, updatedAt = :now WHERE id = :id")
     suspend fun setExpiry(id: Long, at: Long?, now: Long)
 
+    @Query("UPDATE notes SET clipId = :clipId, updatedAt = :now WHERE id = :id")
+    suspend fun setClip(id: Long, clipId: Long?, now: Long)
+
     /** Abgelaufene Notizen still in den Papierkorb verschieben (Ablaufzeit dabei leeren). */
     @Query(
         "UPDATE notes SET deletedAt = :now, expiresAt = NULL " +
@@ -65,7 +68,7 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE reminderAt IS NOT NULL AND deletedAt IS NULL")
     suspend fun notesWithReminders(): List<NoteEntity>
 
-    @Query("UPDATE notes SET deletedAt = :now, expiresAt = NULL WHERE id = :id")
+    @Query("UPDATE notes SET deletedAt = :now, expiresAt = NULL, clipId = NULL WHERE id = :id")
     suspend fun moveToTrash(id: Long, now: Long)
 
     @Query(

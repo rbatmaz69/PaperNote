@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material.icons.rounded.Hub
@@ -50,6 +51,7 @@ fun MoodPickerSheet(
     onSetReminder: () -> Unit,
     onLink: () -> Unit,
     onShare: () -> Unit,
+    onClip: (() -> Unit)? = null,
     onToggleSeal: () -> Unit,
     onSetExpiry: () -> Unit,
     onDelete: () -> Unit,
@@ -167,6 +169,33 @@ fun MoodPickerSheet(
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )
+            }
+
+            // An Büroklammer-Stapel klammern (nur aus dem Raster)
+            if (onClip != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .paperPress(RoundedCornerShape(14.dp)) { onClip() }
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            RoundedCornerShape(14.dp),
+                        )
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AttachFile,
+                        contentDescription = null,
+                        tint = ink,
+                    )
+                    Text(
+                        text = "An Stapel klammern",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = ink,
+                    )
+                }
             }
 
             // Als Papierflieger teilen
