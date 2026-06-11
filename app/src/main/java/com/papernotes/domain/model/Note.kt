@@ -48,6 +48,8 @@ data class Note(
     val position: Long = 0L,
     /** Textmarker-Markierungen (kodiert via HighlightCodec); leer = keine. */
     val highlights: String = "",
+    /** Als erledigt abgestempelt (Notiz bleibt erhalten, trägt einen Gummistempel). */
+    val done: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -54,6 +55,7 @@ fun MoodPickerSheet(
     hasReminder: Boolean,
     sealed: Boolean,
     invisibleInk: Boolean,
+    done: Boolean,
     hasExpiry: Boolean,
     hasCountdown: Boolean,
     hasPhoto: Boolean,
@@ -70,6 +72,7 @@ fun MoodPickerSheet(
     onClip: (() -> Unit)? = null,
     onToggleSeal: () -> Unit,
     onToggleInvisibleInk: () -> Unit,
+    onToggleDone: () -> Unit,
     onEditTags: () -> Unit,
     onSetExpiry: () -> Unit,
     onDelete: () -> Unit,
@@ -392,6 +395,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (invisibleInk) "Geheimtinte entfernen" else "Mit Geheimtinte schreiben",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Als erledigt stempeln / Stempel entfernen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onToggleDone() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.TaskAlt,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (done) "Stempel entfernen" else "Als erledigt stempeln",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

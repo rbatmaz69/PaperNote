@@ -739,6 +739,7 @@ fun NotesScreen(
             hasReminder = target.hasReminder,
             sealed = target.sealed,
             invisibleInk = target.invisibleInk,
+            done = target.done,
             hasExpiry = target.hasExpiry,
             hasCountdown = target.hasCountdown,
             hasPhoto = target.hasPhoto,
@@ -761,6 +762,10 @@ fun NotesScreen(
             },
             onToggleInvisibleInk = {
                 viewModel.toggleInvisibleInk(target)
+                moodTarget = null
+            },
+            onToggleDone = {
+                viewModel.toggleDone(target)
                 moodTarget = null
             },
             onEditTags = {

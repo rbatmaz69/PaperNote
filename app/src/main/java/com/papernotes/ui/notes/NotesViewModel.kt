@@ -270,6 +270,10 @@ class NotesViewModel @Inject constructor(
         repository.setInvisibleInk(note.id, !note.invisibleInk)
     }
 
+    fun toggleDone(note: Note) = viewModelScope.launch {
+        repository.setDone(note.id, !note.done)
+    }
+
     fun setReminder(note: Note, at: Long?) = viewModelScope.launch {
         repository.setReminder(note.id, at)
         if (at != null) {

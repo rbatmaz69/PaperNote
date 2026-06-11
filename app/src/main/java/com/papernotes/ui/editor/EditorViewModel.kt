@@ -201,6 +201,11 @@ class EditorViewModel @Inject constructor(
         scheduleSave()
     }
 
+    fun toggleDone() {
+        _note.update { it.copy(done = !it.done) }
+        scheduleSave()
+    }
+
     /** Schaltet einen Karteireiter an der Notiz an oder aus. */
     fun toggleTag(tag: String) {
         _note.update { note ->

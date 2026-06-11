@@ -143,6 +143,7 @@ object BackupManager {
         put("tags", tags)
         put("position", position)
         put("highlights", highlights)
+        put("done", done)
         put("createdAt", createdAt)
         put("updatedAt", updatedAt)
     }
@@ -169,6 +170,7 @@ object BackupManager {
         tags = o.optString("tags"),
         position = o.optLong("position"),
         highlights = o.optString("highlights"),
+        done = o.optBoolean("done"),
         createdAt = o.optLong("createdAt", System.currentTimeMillis()),
         updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
     )

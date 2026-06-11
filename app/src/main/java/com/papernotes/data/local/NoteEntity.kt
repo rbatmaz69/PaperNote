@@ -30,6 +30,7 @@ data class NoteEntity(
     val tags: String,
     val position: Long,
     val highlights: String,
+    val done: Boolean,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -56,6 +57,7 @@ fun NoteEntity.toDomain(): Note = Note(
     tags = tags,
     position = position,
     highlights = highlights,
+    done = done,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -82,6 +84,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     tags = tags,
     position = position,
     highlights = highlights,
+    done = done,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

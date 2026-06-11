@@ -57,6 +57,9 @@ interface NoteDao {
     @Query("UPDATE notes SET invisibleInk = :on, updatedAt = :now WHERE id = :id")
     suspend fun setInvisibleInk(id: Long, on: Boolean, now: Long)
 
+    @Query("UPDATE notes SET done = :done, updatedAt = :now WHERE id = :id")
+    suspend fun setDone(id: Long, done: Boolean, now: Long)
+
     @Query("UPDATE notes SET dogEarFolded = :folded, mood = :mood, updatedAt = :now WHERE id = :id")
     suspend fun setDogEar(id: Long, folded: Boolean, mood: String, now: Long)
 
