@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -64,7 +65,9 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
@@ -108,6 +111,7 @@ import com.papernotes.ui.components.WaxRed
 import com.papernotes.ui.components.WaxSealBreakOverlay
 import com.papernotes.ui.components.WaxSealBreakRequest
 import com.papernotes.ui.theme.ThemeViewModel
+import com.papernotes.util.PhotoStore
 import com.papernotes.util.sharePlainText
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -177,6 +181,25 @@ fun NotesScreen(
     var clipTarget by remember { mutableStateOf<Note?>(null) }
     var expiryTarget by remember { mutableStateOf<Note?>(null) }
     var countdownTarget by remember { mutableStateOf<Note?>(null) }
+
+    // Foto-Picker (System-Auswahl, keine Berechtigung): wählt ein Bild für photoTarget.
+    val scope = rememberCoroutineScope()
+    var photoTarget by remember { mutableStateOf<Note?>(null) }
+    val pickPhoto = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        val target = photoTarget
+        photoTarget = null
+        if (uri != null && target != null) {
+            scope.launch {
+                val name = PhotoStore.save(context, uri)
+                if (name != null) {
+                    target.photoPath?.let { PhotoStore.delete(context, it) }
+                    viewModel.setPhoto(target, name)
+                }
+            }
+        }
+    }
 
     // Welche Karten schon „eingeflogen" sind – neue Notizen fallen einmalig herein.
     val introducedIds = remember { mutableStateMapOf<Long, Unit>() }
@@ -529,6 +552,7 @@ fun NotesScreen(
             sealed = target.sealed,
             hasExpiry = target.hasExpiry,
             hasCountdown = target.hasCountdown,
+            hasPhoto = target.hasPhoto,
             onPick = { mood ->
                 viewModel.setMood(target, mood)
                 moodTarget = null
@@ -552,6 +576,13 @@ fun NotesScreen(
             onSetCountdown = {
                 moodTarget = null
                 countdownTarget = target
+            },
+            onAttachPhoto = {
+                photoTarget = target
+                moodTarget = null
+                pickPhoto.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
             },
             onLink = {
                 moodTarget = null

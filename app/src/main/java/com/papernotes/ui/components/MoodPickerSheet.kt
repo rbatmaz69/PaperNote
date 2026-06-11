@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.AddAPhoto
 import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
@@ -48,10 +49,12 @@ fun MoodPickerSheet(
     sealed: Boolean,
     hasExpiry: Boolean,
     hasCountdown: Boolean,
+    hasPhoto: Boolean,
     onPick: (MoodCategory) -> Unit,
     onTogglePin: () -> Unit,
     onSetReminder: () -> Unit,
     onSetCountdown: () -> Unit,
+    onAttachPhoto: () -> Unit,
     onLink: () -> Unit,
     onShare: () -> Unit,
     onClip: (() -> Unit)? = null,
@@ -169,6 +172,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (hasCountdown) "Termin ändern" else "Countdown setzen",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Foto anhängen / ersetzen (Polaroid)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onAttachPhoto() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AddAPhoto,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (hasPhoto) "Foto ersetzen" else "Foto anhängen",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

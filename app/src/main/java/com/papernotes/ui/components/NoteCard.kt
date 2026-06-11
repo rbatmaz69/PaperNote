@@ -190,6 +190,15 @@ fun NoteCard(
                 if (note.sealed) {
                     SealedContent()
                 } else {
+                    // Angehängtes Foto als Polaroid, über dem eigentlichen Inhalt.
+                    note.photoPath?.let { path ->
+                        Polaroid(
+                            name = path,
+                            onClick = onClick,
+                            maxImageHeight = 150.dp,
+                            modifier = Modifier.padding(bottom = 2.dp),
+                        )
+                    }
                     when (note.type) {
                         NoteType.CHECKLIST -> ChecklistPreview(note)
                         NoteType.STAMPCARD -> StampCard(

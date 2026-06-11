@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -50,6 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,6 +86,7 @@ import com.papernotes.ui.components.PaperBackground
 import com.papernotes.ui.components.NoteLinkPickerSheet
 import com.papernotes.ui.components.PaperPlaneOverlay
 import com.papernotes.ui.components.PaperPlaneRequest
+import com.papernotes.ui.components.Polaroid
 import com.papernotes.ui.components.INK_PALETTE
 import com.papernotes.ui.components.PEN_MEDIUM
 import com.papernotes.ui.components.ReminderSheet
@@ -94,8 +97,10 @@ import com.papernotes.ui.components.StampMotifPicker
 import com.papernotes.ui.components.paperPress
 import java.time.LocalDate
 import com.papernotes.util.findActivity
+import com.papernotes.util.PhotoStore
 import com.papernotes.util.rememberPaperHaptics
 import com.papernotes.util.sharePlainText
+import kotlinx.coroutines.launch
 
 /**
  * "Clean Writing Mode": Beim Öffnen blenden die System-Leisten sanft aus – es bleibt nur
@@ -121,6 +126,22 @@ fun EditorScreen(
     val notifPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { /* Ergebnis egal: Alarm läuft, Notification erscheint erst nach Erteilung. */ }
+
+    // Foto-Picker (System-Auswahl, keine Berechtigung): speichert das Bild und setzt den Pfad.
+    val photoScope = rememberCoroutineScope()
+    val pickPhoto = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            photoScope.launch {
+                val name = PhotoStore.save(context, uri)
+                if (name != null) {
+                    viewModel.note.value.photoPath?.let { PhotoStore.delete(context, it) }
+                    viewModel.setPhoto(name)
+                }
+            }
+        }
+    }
 
     fun ensureNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -277,6 +298,26 @@ fun EditorScreen(
                             viewModel.flush()
                             onOpenLinkedNote(id)
                         },
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                    )
+                }
+
+                // Angehängtes Foto als Polaroid (tippen ersetzt, ✕ entfernt).
+                note.photoPath?.let { path ->
+                    Polaroid(
+                        name = path,
+                        onClick = {
+                            pickPhoto.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                            )
+                        },
+                        onRemove = {
+                            photoScope.launch {
+                                PhotoStore.delete(context, path)
+                                viewModel.setPhoto(null)
+                            }
+                        },
+                        maxImageHeight = 220.dp,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                     )
                 }
@@ -471,6 +512,7 @@ fun EditorScreen(
                 sealed = note.sealed,
                 hasExpiry = note.hasExpiry,
                 hasCountdown = note.hasCountdown,
+                hasPhoto = note.hasPhoto,
                 onPick = {
                     haptics.tick()
                     viewModel.setMood(it)
@@ -497,6 +539,12 @@ fun EditorScreen(
                 onSetCountdown = {
                     showMood = false
                     showCountdown = true
+                },
+                onAttachPhoto = {
+                    showMood = false
+                    pickPhoto.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
                 },
                 onLink = {
                     showMood = false

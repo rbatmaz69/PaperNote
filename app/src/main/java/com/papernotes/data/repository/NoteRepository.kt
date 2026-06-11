@@ -30,6 +30,7 @@ interface NoteRepository {
     suspend fun setExpiry(id: Long, at: Long?)
     suspend fun setClip(id: Long, clipId: Long?)
     suspend fun setCountdown(id: Long, at: Long?)
+    suspend fun setPhoto(id: Long, path: String?)
     suspend fun purgeExpired()
     suspend fun notesWithReminders(): List<Note>
     suspend fun moveToTrash(id: Long)
@@ -93,6 +94,9 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun setCountdown(id: Long, at: Long?) =
         dao.setCountdown(id, at, System.currentTimeMillis())
+
+    override suspend fun setPhoto(id: Long, path: String?) =
+        dao.setPhoto(id, path, System.currentTimeMillis())
 
     override suspend fun purgeExpired() =
         dao.purgeExpired(System.currentTimeMillis())

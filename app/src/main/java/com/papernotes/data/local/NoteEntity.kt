@@ -23,6 +23,7 @@ data class NoteEntity(
     val backText: String,
     val clipId: Long?,
     val countdownAt: Long?,
+    val photoPath: String?,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -43,6 +44,7 @@ fun NoteEntity.toDomain(): Note = Note(
     backText = backText,
     clipId = clipId,
     countdownAt = countdownAt,
+    photoPath = photoPath,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -63,6 +65,7 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     backText = backText,
     clipId = clipId,
     countdownAt = countdownAt,
+    photoPath = photoPath,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

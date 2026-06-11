@@ -226,6 +226,10 @@ class NotesViewModel @Inject constructor(
         repository.setCountdown(note.id, at)
     }
 
+    fun setPhoto(note: Note, path: String?) = viewModelScope.launch {
+        repository.setPhoto(note.id, path)
+    }
+
     fun linkNotes(a: Long, b: Long) = viewModelScope.launch { repository.linkNotes(a, b) }
 
     fun unlinkNotes(a: Long, b: Long) = viewModelScope.launch { repository.unlinkNotes(a, b) }

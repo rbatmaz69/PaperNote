@@ -61,6 +61,9 @@ interface NoteDao {
     @Query("UPDATE notes SET countdownAt = :at, updatedAt = :now WHERE id = :id")
     suspend fun setCountdown(id: Long, at: Long?, now: Long)
 
+    @Query("UPDATE notes SET photoPath = :path, updatedAt = :now WHERE id = :id")
+    suspend fun setPhoto(id: Long, path: String?, now: Long)
+
     /** Abgelaufene Notizen still in den Papierkorb verschieben (Ablaufzeit dabei leeren). */
     @Query(
         "UPDATE notes SET deletedAt = :now, expiresAt = NULL " +

@@ -34,6 +34,8 @@ data class Note(
     val clipId: Long? = null,
     /** Abreißkalender: Zieldatum (Epoch-Millis am Tagesbeginn); null = kein Countdown. */
     val countdownAt: Long? = null,
+    /** Foto-Polaroid: interner Dateiname im App-Speicher; null = kein Foto. */
+    val photoPath: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
@@ -56,6 +58,9 @@ data class Note(
 
     /** true, wenn ein Abreißkalender-Zieldatum gesetzt ist. */
     val hasCountdown: Boolean get() = countdownAt != null
+
+    /** true, wenn ein Foto angehängt ist (Polaroid). */
+    val hasPhoto: Boolean get() = photoPath != null
 
     /** Verbleibende Tage bis zum Zieltag (0 = heute, negativ = vorbei); null = kein Countdown. */
     fun daysUntil(now: Long): Long? = countdownAt?.let {
