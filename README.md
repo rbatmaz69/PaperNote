@@ -8,6 +8,7 @@ physikbasierte Animationen und haptische Gimmicks. Muji-Stil trifft Material Des
 - **minSdk 33** (Android 13) · compileSdk/targetSdk 35 — `RuntimeShader`/AGSL für die Papiertextur
 - **Room** (Notizen) · **DataStore** (Teebeutel-Status) · **Hilt** (DI)
 - Shared-Element-Transitions, Spring-Physics, AGSL-Shader, native Haptics
+- **Performance:** Baseline Profiles (AOT-Vorkompilierung für schnellen Kaltstart), gebackene Shader-Textur, gegateter Animations-Overhead
 
 ## Features & Gimmicks
 - **Papieroptik:** AGSL-Fasertextur + dezentes Dot-Grid-Raster ([`PaperBackground`](app/src/main/java/com/papernotes/ui/components/PaperBackground.kt), [`Shaders.kt`](app/src/main/java/com/papernotes/util/Shaders.kt)).
@@ -36,21 +37,53 @@ app/src/main/java/com/papernotes/
   ui/editor/      Editor-Screen + ViewModel
   ui/navigation/  SharedTransition-Container
   util/           Haptics, Shaders, Context-Helper
+baselineprofile/  Macrobenchmark, der das Baseline-/Startup-Profil erzeugt
 ```
 
 ## Bauen & Starten
-Voraussetzung: Android Studio (Ladybug+) oder Android SDK 35 + JDK 17.
+Voraussetzung: Android Studio (Ladybug+) oder Android SDK 35 + **JDK 17**.
+Es liegt **kein `gradlew`-Wrapper** im Repo — gebaut wird mit einem installierten `gradle`
+(z. B. via Homebrew). Vorher Umgebung setzen:
 
 ```bash
-# Debug-APK bauen
-./gradlew :app:assembleDebug
-
-# Auf angeschlossenem Gerät/Emulator (API 33+) installieren & starten
-./gradlew :app:installDebug
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export ANDROID_HOME="$HOME/Library/Android/sdk"
 ```
 
-In Android Studio: Projekt öffnen → Gerät/Emulator (API 33+) wählen → **Run**.
-Die `@Preview`-Composables in [`Previews.kt`](app/src/main/java/com/papernotes/ui/preview/Previews.kt) zeigen
-Papier-Hintergrund und Karten direkt in der IDE.
+### Debug (schnelles Iterieren)
+```bash
+gradle :app:installDebug   # baut & installiert auf verbundenem Gerät/Emulator (API 33+)
+```
+In Android Studio: Projekt öffnen → Gerät (API 33+) wählen → **Run**.
+
+> ⚠️ Der Debug-Build ist absichtlich **unoptimiert und deutlich langsamer** (kein R8,
+> `debuggable=true`, kein AOT-Profil). Er eignet sich zum Entwickeln, **nicht** zur
+> Beurteilung der gefühlten Performance.
+
+### Release (echte Performance testen)
+Der `release`-Build (R8 + Resource-Shrinking) ist mit dem Debug-Schlüssel signiert und
+daher ohne eigenes Keystore direkt installierbar:
+```bash
+gradle :app:installRelease
+```
+In Android Studio alternativ **Build → Select Build Variant → `:app` auf `release`**,
+dann normal **Run**. (WLAN-Debugging funktioniert genauso — `adb` sieht das Gerät.)
+
+### Baseline Profile (Kaltstart-Optimierung)
+Ein eingecheckter Baseline-/Startup-Profil-Datensatz
+(`app/src/release/generated/baselineProfiles/`) wird bei jedem Release-Build automatisch
+mit eingebacken — **kein Schritt pro Build nötig**. Neu erzeugen lohnt nur nach größeren
+UI-/Startsequenz-Umbauten (Gerät muss verbunden sein):
+```bash
+gradle :app:generateBaselineProfile
+```
+ProfileInstaller wendet das Profil kurz nach dem ersten Start im Hintergrund an
+(der *zweite* Kaltstart ist also am schnellsten). Sofort erzwingen:
+```bash
+adb shell cmd package compile -m speed-profile -f com.papernotes
+```
+
+Die `@Preview`-Composables in [`Previews.kt`](app/src/main/java/com/papernotes/ui/preview/Previews.kt)
+zeigen Papier-Hintergrund und Karten direkt in der IDE.
 
 > Hinweis: `local.properties` (SDK-Pfad) wird lokal erzeugt und nicht eingecheckt.
