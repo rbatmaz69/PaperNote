@@ -100,14 +100,19 @@ fun StampCard(
         }
     }
 
-    // Sanftes Pulsieren des heutigen, noch leeren Slots.
-    val pulseT = rememberInfiniteTransition(label = "stampPulse")
-    val pulse by pulseT.animateFloat(
-        initialValue = 0.85f,
-        targetValue = 1.12f,
-        animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse),
-        label = "stampPulseScale",
-    )
+    // Sanftes Pulsieren des heutigen, noch leeren Slots. Nur dann die Endlos-Transition
+    // erzeugen – ist heute bereits gestempelt, pulsiert nichts Sichtbares, also läuft pro
+    // Stempelkarte auch keine ungenutzte Animation jeden Frame weiter.
+    val pulse = if (!todayStamped) {
+        rememberInfiniteTransition(label = "stampPulse").animateFloat(
+            initialValue = 0.85f,
+            targetValue = 1.12f,
+            animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse),
+            label = "stampPulseScale",
+        ).value
+    } else {
+        1f
+    }
 
     // Heute/vergangenen Tag stempeln: satter „Thunk", beim Entfernen nur ein leiser Tick.
     fun toggle(day: Long) {

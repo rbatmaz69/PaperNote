@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 android {
@@ -25,6 +26,11 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Mit dem Debug-Schlüssel signieren, damit der optimierte Release-Build (R8 +
+            // Shrinking) ohne eigenes Keystore-Setup direkt installier- und testbar ist –
+            // und der baselineprofile-Plugin seine abgeleiteten Release-Varianten
+            // (nonMinified/benchmark) signieren kann.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -81,4 +87,14 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+
+    // Wendet das eingebackene Baseline-Profil beim ersten Start an (AOT-Vorkompilierung
+    // der heißen Compose-Pfade → schneller Kaltstart & flüssige erste Animationen).
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
+}
+
+baselineProfile {
+    // Profil in die APK einbacken (ProfileInstaller wendet es beim ersten Start an).
+    automaticGenerationDuringBuild = false
 }

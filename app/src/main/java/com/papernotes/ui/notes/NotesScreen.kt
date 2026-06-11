@@ -268,13 +268,17 @@ fun NotesScreen(
     var orderedItems by remember { mutableStateOf<List<GridItem>>(emptyList()) }
     var draggingKey by remember { mutableStateOf<String?>(null) }
     var fingerAbs by remember { mutableStateOf(Offset.Zero) }
-    // Leichtes Wackeln als Modus-Signal.
-    val jiggle by rememberInfiniteTransition(label = "jiggle").animateFloat(
-        initialValue = 0f,
-        targetValue = 6.2831855f,
-        animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing)),
-        label = "jigglePhase",
-    )
+    // Leichtes Wackeln als Modus-Signal – nur im Anordnen-Modus erzeugen, damit die
+    // Endlos-Animation außerhalb nicht jeden Frame ungenutzt weiterläuft. Der Wert wird
+    // unten in der graphicsLayer (Draw-Phase) gelesen, daher hier als State halten.
+    val jiggle = if (arrangeMode) {
+        rememberInfiniteTransition(label = "jiggle").animateFloat(
+            initialValue = 0f,
+            targetValue = 6.2831855f,
+            animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing)),
+            label = "jigglePhase",
+        )
+    } else null
 
     fun finishArrange() {
         if (arrangeMode) {
@@ -414,7 +418,7 @@ fun NotesScreen(
                                                   scaleX = 1.05f
                                                   scaleY = 1.05f
                                               } else {
-                                                  rotationZ = sin(jiggle + item.key.hashCode()) * 1.2f
+                                                  rotationZ = sin((jiggle?.value ?: 0f) + item.key.hashCode()) * 1.2f
                                               }
                                           }
                                           .pointerInput(item.key) {

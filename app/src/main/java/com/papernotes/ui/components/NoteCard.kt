@@ -94,14 +94,16 @@ fun NoteCard(
     // Papier-Flattern: zarte, dauerhafte Wackelbewegung, solange die Erinnerung fällig ist.
     // Die Werte werden erst in der graphicsLayer (Draw-Phase) gelesen – nur fällige Karten
     // zeichnen pro Frame neu, der Rest bleibt von der Endlos-Animation unberührt.
-    val flutter = rememberInfiniteTransition(label = "flutter")
-    val flutterRotation = flutter.animateFloat(
+    // Nur fällige Karten flattern – darum die Endlos-Transition auch nur dann anlegen.
+    // So tickt nicht pro (nicht-fälliger) Karte eine ungenutzte Animation jeden Frame.
+    val flutter = if (reminderDue) rememberInfiniteTransition(label = "flutter") else null
+    val flutterRotation = flutter?.animateFloat(
         initialValue = -1.2f,
         targetValue = 1.2f,
         animationSpec = infiniteRepeatable(tween(620), RepeatMode.Reverse),
         label = "flutterRotation",
     )
-    val flutterShift = flutter.animateFloat(
+    val flutterShift = flutter?.animateFloat(
         initialValue = -3f,
         targetValue = 3f,
         animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
@@ -147,8 +149,8 @@ fun NoteCard(
                 scaleY = scale
                 alpha = inkAlpha
                 if (reminderDue) {
-                    rotationZ = flutterRotation.value
-                    translationX = flutterShift.value
+                    rotationZ = flutterRotation?.value ?: 0f
+                    translationX = flutterShift?.value ?: 0f
                 }
             },
     ) {
@@ -214,7 +216,7 @@ fun NoteCard(
                             compact = true,
                         )
                         NoteType.SKETCH -> {
-                            val strokes = note.sketch
+                            val strokes = remember(note.body) { note.sketch }
                             if (strokes.isEmpty()) {
                                 Text(
                                     text = "leere Skizze",
@@ -231,11 +233,14 @@ fun NoteCard(
                                 )
                             }
                         }
-                        NoteType.TEXT -> if (note.invisibleInk && note.body.isNotBlank()) {
+                        NoteType.TEXT -> {
+                          // Textmarker-Codec nur bei Änderung neu parsen.
+                          val highlightRanges = remember(note.highlights) { note.highlightRanges }
+                          if (note.invisibleInk && note.body.isNotBlank()) {
                             InvisibleInkText(text = note.preview, onOpen = onClick)
-                        } else if (note.body.isNotBlank() && note.highlightRanges.isNotEmpty()) {
+                        } else if (note.body.isNotBlank() && highlightRanges.isNotEmpty()) {
                             Text(
-                                text = buildHighlightedString(note.body, note.highlightRanges),
+                                text = buildHighlightedString(note.body, highlightRanges),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 6,
@@ -253,6 +258,7 @@ fun NoteCard(
                                 maxLines = 6,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                        }
                         }
                     }
                 }
@@ -525,7 +531,8 @@ private fun PageCorner(onFlip: () -> Unit, modifier: Modifier = Modifier) {
 /** Bis zu 5 Mini-Zeilen + Fortschritt „3/5" (read-only; Tap öffnet den Editor). */
 @Composable
 private fun ChecklistPreview(note: Note) {
-    val items = note.checklist
+    // Roh-String nur neu parsen, wenn er sich ändert – nicht bei jeder Recomposition.
+    val items = remember(note.body) { note.checklist }
     val (done, total) = ChecklistCodec.progress(items)
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
 

@@ -26,6 +26,15 @@ import androidx.compose.runtime.compositionLocalOf
 val LocalPaperDark = compositionLocalOf { false }
 
 /**
+ * Das aktuell *aufgelöste* (nicht animierte) Papier-Theme. Liefert die stabilen
+ * Palette-Farben (paper/ink/…), die sich nur bei echtem Theme-Wechsel ändern – nicht
+ * pro Frame während der Farb-Überblendung. [PaperBackground] speist daraus seinen
+ * Vollbild-Hintergrund, damit das teure Shader-Bitmap nur einmal pro Theme gebacken
+ * wird statt bei jedem Frame des Crossfades.
+ */
+val LocalPaperTheme = compositionLocalOf { PaperTheme.DAYLIGHT }
+
+/**
  * PaperNotes baut sein warmes [androidx.compose.material3.ColorScheme] aus dem gewählten
  * [PaperTheme]. Stimmungsfarben kommen über [com.papernotes.domain.model.MoodCategory] dazu.
  */
@@ -47,6 +56,7 @@ fun PaperNotesTheme(
 
     CompositionLocalProvider(
         LocalPaperDark provides resolved.dark,
+        LocalPaperTheme provides resolved,
         LocalRippleConfiguration provides ripple,
     ) {
         MaterialTheme(

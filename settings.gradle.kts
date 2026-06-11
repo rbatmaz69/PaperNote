@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "PaperNotes"
 include(":app")
+include(":baselineprofile")

@@ -46,6 +46,11 @@ fun RedThreadOverlay(
     dimmedIds: Set<Long>,
     modifier: Modifier = Modifier,
 ) {
+    // Ohne Verknüpfungen gibt es nichts zu zeichnen – dann gar nicht erst die Endlos-
+    // „Atem"-Animation starten, die sonst das bildschirmfüllende Overlay jeden Frame
+    // neu invalidieren würde (der Normalfall ohne Fäden).
+    if (links.isEmpty()) return
+
     val scope = rememberCoroutineScope()
     // Einnäh-Fortschritt pro Faden (0 = noch nicht gezogen, 1 = fertig gespannt).
     val stitch = remember { mutableStateMapOf<NoteLink, Animatable<Float, *>>() }
