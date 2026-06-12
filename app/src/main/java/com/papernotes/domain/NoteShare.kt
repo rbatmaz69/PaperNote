@@ -14,24 +14,22 @@ private const val OPEN_GLYPH = "☐" // ☐
  * hübschen Kästchen-Glyphen (☑/☐) statt der internen `[x]`/`[ ]`-Kodierung
  * (siehe [com.papernotes.domain.ChecklistCodec]). Leere Felder werden weggelassen.
  */
-fun Note.toShareText(): String {
-    val title = title.trim()
-
-    val content = when (type) {
-        NoteType.CHECKLIST ->
-            checklist.joinToString("\n") { item ->
-                (if (item.checked) DONE_GLYPH else OPEN_GLYPH) + " " + item.text
-            }
-        NoteType.STAMPCARD -> {
-            val today = LocalDate.now().toEpochDay()
-            "Strähne: ${StampCodec.streak(stamps, today)} Tage · ${StampCodec.total(stamps)}× gestempelt"
-        }
-        NoteType.SKETCH -> "🖊️ Skizze"
-        NoteType.TEXT -> body.trim()
-    }
-
-    return listOf(title, content)
+fun Note.toShareText(): String =
+    listOf(title.trim(), toShareBody())
         .filter { it.isNotBlank() }
         .joinToString("\n\n")
         .trim()
+
+/** Nur der Inhalt (ohne Titel) als lesbarer Text – für die Karten-Darstellung beim Teilen. */
+fun Note.toShareBody(): String = when (type) {
+    NoteType.CHECKLIST ->
+        checklist.joinToString("\n") { item ->
+            (if (item.checked) DONE_GLYPH else OPEN_GLYPH) + " " + item.text
+        }
+    NoteType.STAMPCARD -> {
+        val today = LocalDate.now().toEpochDay()
+        "Strähne: ${StampCodec.streak(stamps, today)} Tage · ${StampCodec.total(stamps)}× gestempelt"
+    }
+    NoteType.SKETCH -> "🖊️ Skizze"
+    NoteType.TEXT -> body.trim()
 }

@@ -24,16 +24,22 @@ import com.papernotes.ui.notes.NotesScreen
 /** Sentinel: eine *neue* Notiz wird mit id 0 geöffnet; null = Übersicht. */
 private const val NEW_NOTE_ID = 0L
 
+/** Inhalt für einen direkt beim Start zu öffnenden neuen Zettel (geteilter Text / Shortcut). */
+data class QuickCapture(val title: String, val body: String)
+
 /**
  * Hält Übersicht und Editor in einem [SharedTransitionLayout], sodass eine Karte beim
  * Antippen via [AnimatedContent] fließend zum Vollbild-Editor morpht (kein harter Wechsel).
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun PaperNotesNavGraph(initialNoteId: Long? = null) {
+fun PaperNotesNavGraph(initialNoteId: Long? = null, quickCapture: QuickCapture? = null) {
     // null = Grid, sonst die zu bearbeitende Notiz-id (0 = neu, Typ via newNoteType).
     // Per Notification-Tap geöffnet: direkt mit der betreffenden Notiz starten.
-    var selectedNoteId by rememberSaveable { mutableStateOf(initialNoteId) }
+    // Per „Einkleben"/Shortcut: direkt einen neuen Zettel (id 0) öffnen.
+    var selectedNoteId by rememberSaveable {
+        mutableStateOf(if (quickCapture != null) NEW_NOTE_ID else initialNoteId)
+    }
     var newNoteType by rememberSaveable { mutableStateOf(NoteType.TEXT.name) }
     // Steigt bei jedem Öffnen → erzwingt frischen Editor-Zustand (siehe EditorViewModel.load).
     var editorSession by rememberSaveable { mutableIntStateOf(0) }
@@ -78,10 +84,14 @@ fun PaperNotesNavGraph(initialNoteId: Long? = null) {
                     }
                 }
             } else {
+                // QuickCapture-Inhalt nur für den initial geöffneten Zettel (session 0) vorbefüllen.
+                val capture = if (editorSession == 0) quickCapture else null
                 EditorScreen(
                     noteId = target,
                     newType = NoteType.fromName(newNoteType),
                     session = editorSession,
+                    initialTitle = capture?.title.orEmpty(),
+                    initialBody = capture?.body.orEmpty(),
                     sharedScope = this@SharedTransitionLayout,
                     animatedScope = this@AnimatedContent,
                     onBack = { selectedNoteId = null },

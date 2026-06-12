@@ -1,12 +1,14 @@
 package com.papernotes.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -33,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.papernotes.domain.model.ReminderRule
 import com.papernotes.ui.theme.Terracotta
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -47,12 +50,15 @@ import java.util.Locale
 @Composable
 fun ReminderSheet(
     currentReminderAt: Long?,
-    onPick: (Long) -> Unit,
+    currentRule: ReminderRule,
+    onPick: (Long, ReminderRule) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val ink = MaterialTheme.colorScheme.onBackground
     var showCustom by remember { mutableStateOf(false) }
+    // Gewählte Wiederholung; gilt für alle Zeit-Auswahlen dieses Sheets.
+    var rule by remember { mutableStateOf(currentRule) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -73,15 +79,28 @@ fun ReminderSheet(
 
             if (currentReminderAt != null) {
                 Text(
-                    text = "Aktuell: ${formatReminder(currentReminderAt)}",
+                    text = "Aktuell: ${formatReminder(currentReminderAt)}" +
+                        if (currentRule != ReminderRule.NONE) " · ${currentRule.label.lowercase()}" else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            PresetRow("In 1 Stunde") { onPick(inOneHour()) }
-            PresetRow("Heute Abend · 20:00") { onPick(todayAt(20, 0)) }
-            PresetRow("Morgen früh · 09:00") { onPick(tomorrowAt(9, 0)) }
+            // Wiederholung: gilt für die anschließend gewählte Zeit.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ReminderRule.entries.forEach { r ->
+                    RuleChip(label = r.label, selected = r == rule) { rule = r }
+                }
+            }
+
+            PresetRow("In 1 Stunde") { onPick(inOneHour(), rule) }
+            PresetRow("Heute Abend · 20:00") { onPick(todayAt(20, 0), rule) }
+            PresetRow("Morgen früh · 09:00") { onPick(tomorrowAt(9, 0), rule) }
 
             PresetRow("Eigene Zeit …", icon = Icons.Rounded.Schedule) { showCustom = true }
 
@@ -115,10 +134,34 @@ fun ReminderSheet(
             initial = currentReminderAt,
             onConfirm = {
                 showCustom = false
-                onPick(it)
+                onPick(it, rule)
             },
             onDismiss = { showCustom = false },
         )
+    }
+}
+
+/** Kleiner Auswahl-Chip für die Wiederholungs-Regel. */
+@Composable
+private fun RuleChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50)
+    val bg = if (selected) {
+        MaterialTheme.colorScheme.onBackground
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val fg = if (selected) {
+        MaterialTheme.colorScheme.background
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .paperPress(shape) { onClick() }
+            .background(bg, shape)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(text = label, style = MaterialTheme.typography.labelLarge, color = fg)
     }
 }
 

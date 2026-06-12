@@ -63,6 +63,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -82,6 +83,7 @@ import com.papernotes.ui.components.ordered
 import com.papernotes.domain.model.cardSurface
 import com.papernotes.domain.model.earAccent
 import com.papernotes.domain.toShareText
+import com.papernotes.ui.components.CapsuleSheet
 import com.papernotes.ui.components.ConfettiBurst
 import com.papernotes.ui.components.DogEar
 import com.papernotes.ui.components.ExpirySheet
@@ -105,9 +107,13 @@ import com.papernotes.ui.components.paperPress
 import com.papernotes.ui.components.paperRuling
 import java.time.LocalDate
 import com.papernotes.util.PhotoStore
+import com.papernotes.util.ShareCardRenderer
 import com.papernotes.util.rememberPaperHaptics
+import com.papernotes.util.shareImage
 import com.papernotes.util.sharePlainText
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * "Clean Writing Mode": Beim Öffnen blenden die System-Leisten sanft aus – es bleibt nur
@@ -124,6 +130,9 @@ fun EditorScreen(
     animatedScope: AnimatedVisibilityScope,
     onBack: () -> Unit,
     onOpenLinkedNote: (Long) -> Unit,
+    // Vorbefüllung für einen frisch „eingeklebten" Zettel (geteilter Text/Shortcut).
+    initialTitle: String = "",
+    initialBody: String = "",
     viewModel: EditorViewModel = hiltViewModel(),
 ) {
     val haptics = rememberPaperHaptics()
@@ -159,7 +168,7 @@ fun EditorScreen(
         }
     }
 
-    LaunchedEffect(session) { viewModel.load(noteId, newType, session) }
+    LaunchedEffect(session) { viewModel.load(noteId, newType, session, initialTitle, initialBody) }
     val note by viewModel.note.collectAsStateWithLifecycle()
     val items by viewModel.items.collectAsStateWithLifecycle()
     val strokes by viewModel.strokes.collectAsStateWithLifecycle()
@@ -174,6 +183,7 @@ fun EditorScreen(
     var showingBack by remember { mutableStateOf(false) }
     var showReminder by remember { mutableStateOf(false) }
     var showExpiry by remember { mutableStateOf(false) }
+    var showCapsule by remember { mutableStateOf(false) }
     var showLinkPicker by remember { mutableStateOf(false) }
     var showClip by remember { mutableStateOf(false) }
     var showCountdown by remember { mutableStateOf(false) }
@@ -181,6 +191,7 @@ fun EditorScreen(
     var editorBounds by remember { mutableStateOf(Rect.Zero) }
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
     var shareText by remember { mutableStateOf("") }
+    var shareUri by remember { mutableStateOf<android.net.Uri?>(null) }
     val bodyFocus = remember { FocusRequester() }
     // Textmarker: Body-Feld als TextFieldValue (für die Auswahl) + sichtbare Farbleiste.
     var bodyValue by remember(session) { mutableStateOf(TextFieldValue(note.body)) }
@@ -191,6 +202,7 @@ fun EditorScreen(
         if (note.body != bodyValue.text) bodyValue = bodyValue.copy(text = note.body)
     }
     val ink = MaterialTheme.colorScheme.onBackground
+    val accent = note.mood.earAccent()
     // Stimmungswechsel: Editor-Hintergrund weich durchwaschen.
     val noteSurface by animateColorAsState(note.mood.cardSurface(), tween(320), label = "editorSurface")
     // Blatt umdrehen: 0° = Vorderseite, 180° = Rückseite (Inhalt wird bei 90° getauscht).
@@ -548,13 +560,15 @@ fun EditorScreen(
             }
         }
 
-        // Papierflieger-Animation → Android-Teilen-Auswahl
+        // Papierflieger-Animation → Android-Teilen-Auswahl (Karten-Bild, sonst Klartext)
         shareRequest?.let { req ->
             PaperPlaneOverlay(
                 request = req,
                 onFinished = {
-                    context.sharePlainText(shareText)
+                    val uri = shareUri
+                    if (uri != null) context.shareImage(uri, shareText) else context.sharePlainText(shareText)
                     shareRequest = null
+                    shareUri = null
                 },
             )
         }
@@ -569,6 +583,7 @@ fun EditorScreen(
                 done = note.done,
                 hasExpiry = note.hasExpiry,
                 hasCountdown = note.hasCountdown,
+                hasCapsule = note.capsuleAt != null,
                 hasPhoto = note.hasPhoto,
                 paper = note.paper,
                 onPick = {
@@ -589,6 +604,10 @@ fun EditorScreen(
                     haptics.stamp()
                     viewModel.toggleSeal()
                     showMood = false
+                },
+                onSetCapsule = {
+                    showMood = false
+                    showCapsule = true
                 },
                 onToggleInvisibleInk = {
                     haptics.stamp()
@@ -632,12 +651,23 @@ fun EditorScreen(
                 },
                 onShare = {
                     showMood = false
-                    val text = note.toShareText()
-                    if (editorBounds != Rect.Zero) {
-                        shareText = text
-                        shareRequest = PaperPlaneRequest(note.id, editorBounds, noteSurface)
-                    } else {
-                        context.sharePlainText(text)
+                    val snapshot = note
+                    shareText = snapshot.toShareText()
+                    val surfaceArgb = noteSurface.toArgb()
+                    val inkArgb = ink.toArgb()
+                    val accentArgb = accent.toArgb()
+                    photoScope.launch {
+                        val uri = withContext(Dispatchers.IO) {
+                            ShareCardRenderer.render(context, snapshot, surfaceArgb, inkArgb, accentArgb)
+                        }
+                        shareUri = uri
+                        if (editorBounds != Rect.Zero) {
+                            shareRequest = PaperPlaneRequest(snapshot.id, editorBounds, noteSurface)
+                        } else if (uri != null) {
+                            context.shareImage(uri, shareText)
+                        } else {
+                            context.sharePlainText(shareText)
+                        }
                     }
                 },
                 onCopy = {
@@ -656,9 +686,10 @@ fun EditorScreen(
         if (showReminder) {
             ReminderSheet(
                 currentReminderAt = note.reminderAt,
-                onPick = { at ->
+                currentRule = note.reminderRule,
+                onPick = { at, rule ->
                     haptics.tick()
-                    viewModel.setReminder(at)
+                    viewModel.setReminder(at, rule)
                     ensureNotificationPermission()
                     showReminder = false
                 },
@@ -668,6 +699,23 @@ fun EditorScreen(
                     showReminder = false
                 },
                 onDismiss = { showReminder = false },
+            )
+        }
+
+        if (showCapsule) {
+            CapsuleSheet(
+                currentCapsuleAt = note.capsuleAt,
+                onPick = { at ->
+                    haptics.stamp()
+                    viewModel.setCapsule(at)
+                    showCapsule = false
+                },
+                onClear = {
+                    haptics.tap()
+                    viewModel.setCapsule(null)
+                    showCapsule = false
+                },
+                onDismiss = { showCapsule = false },
             )
         }
 

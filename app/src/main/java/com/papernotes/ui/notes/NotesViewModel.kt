@@ -11,6 +11,7 @@ import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteLink
 import com.papernotes.domain.model.PaperStyle
+import com.papernotes.domain.model.ReminderRule
 import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -274,14 +275,24 @@ class NotesViewModel @Inject constructor(
         repository.setDone(note.id, !note.done)
     }
 
-    fun setReminder(note: Note, at: Long?) = viewModelScope.launch {
-        repository.setReminder(note.id, at)
-        if (at != null) {
-            reminderScheduler.schedule(note.id, note.title, at)
-        } else {
-            reminderScheduler.cancel(note.id)
-            reminderScheduler.dismissNotification(note.id)
+    fun setReminder(note: Note, at: Long?, rule: ReminderRule = ReminderRule.NONE) =
+        viewModelScope.launch {
+            val newRule = if (at != null) rule else ReminderRule.NONE
+            // Voll speichern, damit auch die Wiederholungs-Regel persistiert wird.
+            repository.save(note.copy(reminderAt = at, reminderRule = newRule))
+            if (at != null) {
+                reminderScheduler.schedule(note.id, note.title, at, newRule)
+            } else {
+                reminderScheduler.cancel(note.id)
+                reminderScheduler.dismissNotification(note.id)
+            }
         }
+
+    fun setCapsule(note: Note, at: Long?) = viewModelScope.launch {
+        // Versiegeln + Selbst-Öffnen einplanen (bzw. auflösen).
+        repository.save(note.copy(capsuleAt = at, sealed = if (at != null) true else note.sealed))
+        if (at != null) reminderScheduler.scheduleCapsule(note.id, at)
+        else reminderScheduler.cancelCapsule(note.id)
     }
 
     fun setExpiry(note: Note, at: Long?) = viewModelScope.launch {

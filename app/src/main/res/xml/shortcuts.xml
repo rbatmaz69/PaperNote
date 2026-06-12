@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_note"
+        android:enabled="true"
+        android:icon="@drawable/ic_reminder"
+        android:shortcutShortLabel="@string/shortcut_new_note"
+        android:shortcutLongLabel="@string/shortcut_new_note_long">
+        <intent
+            android:action="com.papernotes.NEW_NOTE"
+            android:targetPackage="com.papernotes"
+            android:targetClass="com.papernotes.MainActivity" />
+    </shortcut>
+</shortcuts>

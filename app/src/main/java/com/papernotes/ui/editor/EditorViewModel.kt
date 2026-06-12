@@ -14,6 +14,7 @@ import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.PaperStyle
+import com.papernotes.domain.model.ReminderRule
 import java.time.LocalDate
 import com.papernotes.reminder.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -102,7 +103,13 @@ class EditorViewModel @Inject constructor(
      * und steigt bei *jedem* Öffnen — so wird der (Activity-weit geteilte) ViewModel-Zustand bei
      * jedem Editor-Aufruf frisch zurückgesetzt, auch beim wiederholten Anlegen neuer Notizen.
      */
-    fun load(id: Long, newType: NoteType, session: Int) {
+    fun load(
+        id: Long,
+        newType: NoteType,
+        session: Int,
+        initialTitle: String = "",
+        initialBody: String = "",
+    ) {
         if (session == loadedSession) return
         loadedSession = session
 
@@ -117,8 +124,10 @@ class EditorViewModel @Inject constructor(
         currentId.value = if (id > 0L) id else 0L
 
         if (id <= 0L) {
-            _note.value = Note(type = newType)
+            _note.value = Note(type = newType, title = initialTitle, body = initialBody)
             if (newType == NoteType.CHECKLIST) addItem()
+            // Eingeklebter Inhalt soll sofort gespeichert werden (nicht erst nach Eingabe).
+            if (initialTitle.isNotBlank() || initialBody.isNotBlank()) scheduleSave()
             return
         }
         _note.value = Note(id = id)
@@ -126,10 +135,20 @@ class EditorViewModel @Inject constructor(
             repository.getNote(id)?.let { note ->
                 if (loadedSession != session) return@launch
                 // Öffnen = Quittieren: fällige Erinnerung beenden (Flattern + Notification weg).
-                if (note.isReminderDue(System.currentTimeMillis())) {
+                // Wiederkehrende Erinnerung wird stattdessen auf den nächsten Termin vorgerückt.
+                val nowMs = System.currentTimeMillis()
+                if (note.isReminderDue(nowMs)) {
                     reminderScheduler.dismissNotification(id)
-                    repository.setReminder(id, null)
-                    _note.value = note.copy(reminderAt = null)
+                    if (note.isRecurring) {
+                        var next = note.reminderRule.next(note.reminderAt!!)
+                        while (next <= nowMs) next = note.reminderRule.next(next)
+                        repository.setReminder(id, next)
+                        reminderScheduler.schedule(id, note.title, next, note.reminderRule)
+                        _note.value = note.copy(reminderAt = next)
+                    } else {
+                        repository.setReminder(id, null)
+                        _note.value = note.copy(reminderAt = null)
+                    }
                     _items.value = note.checklist.map { it.toEditable() }
                     _strokes.value = note.sketch
                     return@let
@@ -228,6 +247,19 @@ class EditorViewModel @Inject constructor(
         scheduleSave()
     }
 
+    /** Zeitkapsel: versiegelt die Notiz und plant das Selbst-Öffnen zu [at] (null = auflösen). */
+    fun setCapsule(at: Long?) {
+        saveJob?.cancel()
+        _note.update { it.copy(capsuleAt = at, sealed = if (at != null) true else it.sealed) }
+        viewModelScope.launch {
+            val snapshot = _note.value
+            val id = repository.save(snapshot)
+            if (snapshot.id == 0L) _note.update { if (it.id == 0L) it.copy(id = id) else it }
+            if (at != null) reminderScheduler.scheduleCapsule(id, at)
+            else reminderScheduler.cancelCapsule(id)
+        }
+    }
+
     /** Setzt/entfernt das Abreißkalender-Zieldatum; rein persistiert, kein Alarm nötig. */
     fun setCountdown(at: Long?) {
         _note.update { it.copy(countdownAt = at) }
@@ -250,15 +282,17 @@ class EditorViewModel @Inject constructor(
      * Setzt ([at] != null) oder entfernt ([at] == null) die Erinnerung. Speichert sofort,
      * damit eine frische Notiz eine id bekommt, und plant/entfernt dann den exakten Alarm.
      */
-    fun setReminder(at: Long?) {
+    fun setReminder(at: Long?, rule: ReminderRule = ReminderRule.NONE) {
         saveJob?.cancel()
-        _note.update { it.copy(reminderAt = at) }
+        _note.update {
+            it.copy(reminderAt = at, reminderRule = if (at != null) rule else ReminderRule.NONE)
+        }
         viewModelScope.launch {
             val snapshot = _note.value
             val id = repository.save(snapshot)
             if (snapshot.id == 0L) _note.update { if (it.id == 0L) it.copy(id = id) else it }
             if (at != null) {
-                reminderScheduler.schedule(id, snapshot.title, at)
+                reminderScheduler.schedule(id, snapshot.title, at, snapshot.reminderRule)
             } else {
                 reminderScheduler.cancel(id)
                 reminderScheduler.dismissNotification(id)

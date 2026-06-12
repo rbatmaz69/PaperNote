@@ -9,4 +9,6 @@
     <string name="delete">Löschen</string>
     <string name="archive">Archivieren</string>
     <string name="mood_picker_title">Stimmung wählen</string>
+    <string name="shortcut_new_note">Neuer Zettel</string>
+    <string name="shortcut_new_note_long">Sofort einen neuen Zettel schreiben</string>
 </resources>

@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NoteEntity::class, NoteLinkEntity::class],
-    version = 16,
+    version = 17,
     exportSchema = false,
 )
 abstract class PaperNotesDatabase : RoomDatabase() {
@@ -122,6 +122,14 @@ abstract class PaperNotesDatabase : RoomDatabase() {
         val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE notes ADD COLUMN done INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** v17: Wiederkehrende Erinnerungen (reminderRule) + Zeitkapsel-Öffnungsdatum (capsuleAt). */
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN reminderRule TEXT NOT NULL DEFAULT 'NONE'")
+                db.execSQL("ALTER TABLE notes ADD COLUMN capsuleAt INTEGER")
             }
         }
     }

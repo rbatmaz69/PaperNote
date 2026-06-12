@@ -7,6 +7,7 @@ import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.PaperStyle
+import com.papernotes.domain.model.ReminderRule
 import com.papernotes.util.PhotoStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -134,6 +135,8 @@ object BackupManager {
         put("invisibleInk", invisibleInk)
         putOpt("deletedAt", deletedAt)
         putOpt("reminderAt", reminderAt)
+        put("reminderRule", reminderRule.name)
+        putOpt("capsuleAt", capsuleAt)
         putOpt("expiresAt", expiresAt)
         put("backText", backText)
         putOpt("clipId", clipId)
@@ -161,6 +164,8 @@ object BackupManager {
         invisibleInk = o.optBoolean("invisibleInk"),
         deletedAt = o.optLongOrNull("deletedAt"),
         reminderAt = o.optLongOrNull("reminderAt"),
+        reminderRule = ReminderRule.fromName(o.optString("reminderRule")),
+        capsuleAt = o.optLongOrNull("capsuleAt"),
         expiresAt = o.optLongOrNull("expiresAt"),
         backText = o.optString("backText"),
         clipId = o.optLongOrNull("clipId"),

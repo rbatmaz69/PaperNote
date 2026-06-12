@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -194,7 +195,7 @@ fun NoteCard(
                     )
                 }
                 if (note.sealed) {
-                    SealedContent()
+                    SealedContent(capsuleAt = note.capsuleAt)
                 } else {
                     // Angehängtes Foto als Polaroid, über dem eigentlichen Inhalt.
                     note.photoPath?.let { path ->
@@ -335,6 +336,7 @@ fun NoteCard(
         if (note.hasReminder) {
             ReminderTab(
                 color = accent,
+                recurring = note.isRecurring,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .offset(x = (-5).dp),
@@ -373,24 +375,34 @@ fun NoteCard(
 
 private val StampRed = Color(0xFFB5402F).copy(alpha = 0.75f)
 
-/** Kleiner aufgeklebter Papier-Reiter (wie ein Lesezeichen) für Notizen mit Erinnerung. */
+/**
+ * Kleiner aufgeklebter Papier-Reiter (wie ein Lesezeichen) für Notizen mit Erinnerung.
+ * Wiederkehrende Erinnerungen tragen ein dezentes „↻".
+ */
 @Composable
-private fun ReminderTab(color: Color, modifier: Modifier = Modifier) {
+private fun ReminderTab(color: Color, recurring: Boolean = false, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
     Box(
         modifier = modifier
             .shadow(
                 elevation = 3.dp,
-                shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp),
+                shape = shape,
                 clip = false,
                 spotColor = Color.Black.copy(alpha = 0.2f),
             )
-            .background(
-                color = color,
-                shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp),
-            )
-            .width(10.dp)
+            .background(color = color, shape = shape)
+            .width(if (recurring) 14.dp else 10.dp)
             .height(34.dp),
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        if (recurring) {
+            Text(
+                text = "↻",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.9f),
+            )
+        }
+    }
 }
 
 /** Zeitfenster (1 h), in dem eine vergängliche Notiz sichtbar altert. */
@@ -444,9 +456,12 @@ private fun remainingLabel(remainingMs: Long): String {
     }
 }
 
-/** Versiegelte Notiz: Inhalt verborgen, nur Wachssiegel + zarter Hinweis. */
+/**
+ * Versiegelte Notiz: Inhalt verborgen, nur Wachssiegel + zarter Hinweis. Ist es eine
+ * Zeitkapsel ([capsuleAt] gesetzt), steht das Öffnungsdatum darunter.
+ */
 @Composable
-private fun SealedContent() {
+private fun SealedContent(capsuleAt: Long? = null) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -454,12 +469,20 @@ private fun SealedContent() {
     ) {
         WaxSeal(size = 56.dp)
         Text(
-            text = "versiegelt",
+            text = if (capsuleAt != null) {
+                "Zeitkapsel · ${formatCapsuleDay(capsuleAt)}"
+            } else {
+                "versiegelt"
+            },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.outline,
+            textAlign = TextAlign.Center,
         )
     }
 }
+
+private fun formatCapsuleDay(millis: Long): String =
+    java.text.SimpleDateFormat("d. MMM yyyy", java.util.Locale.GERMAN).format(millis)
 
 /**
  * Die Rückseite des Blatts im Raster: nur-lesbarer Text auf dem dunkleren „Unterseiten"-Ton.

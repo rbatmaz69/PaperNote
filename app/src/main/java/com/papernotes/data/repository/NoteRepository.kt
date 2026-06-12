@@ -39,6 +39,7 @@ interface NoteRepository {
     suspend fun applyOrder(orderedIds: List<Long>)
     suspend fun purgeExpired()
     suspend fun notesWithReminders(): List<Note>
+    suspend fun notesWithCapsules(): List<Note>
     suspend fun moveToTrash(id: Long)
     suspend fun restore(id: Long)
     suspend fun purgeOldTrash()
@@ -127,6 +128,9 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun notesWithReminders(): List<Note> =
         dao.notesWithReminders().map { it.toDomain() }
+
+    override suspend fun notesWithCapsules(): List<Note> =
+        dao.notesWithCapsules().map { it.toDomain() }
 
     override suspend fun moveToTrash(id: Long) =
         dao.moveToTrash(id, System.currentTimeMillis())

@@ -1,5 +1,6 @@
 package com.papernotes
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +16,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.papernotes.reminder.ReminderReceiver
 import com.papernotes.ui.navigation.PaperNotesNavGraph
+import com.papernotes.ui.navigation.QuickCapture
 import com.papernotes.ui.notes.NotesViewModel
 import com.papernotes.ui.theme.PaperNotesTheme
 import com.papernotes.ui.theme.ThemeViewModel
@@ -40,6 +42,18 @@ class MainActivity : ComponentActivity() {
             ?.getLongExtra(ReminderReceiver.EXTRA_NOTE_ID, 0L)
             ?.takeIf { it != 0L }
 
+        // „Einkleben": geteilter Text/Link aus einer anderen App → neuer Zettel.
+        // Launcher-Shortcut „Neuer Zettel" → leerer Zettel.
+        val quickCapture = when {
+            intent?.action == Intent.ACTION_SEND && intent.type == "text/plain" -> {
+                val body = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+                val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty()
+                QuickCapture(title = subject, body = body)
+            }
+            intent?.action == ACTION_NEW_NOTE -> QuickCapture(title = "", body = "")
+            else -> null
+        }
+
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val theme by themeViewModel.theme.collectAsStateWithLifecycle()
@@ -58,8 +72,13 @@ class MainActivity : ComponentActivity() {
             }
 
             PaperNotesTheme(theme = theme, animateThemeChange = themeReady) {
-                PaperNotesNavGraph(initialNoteId = initialNoteId)
+                PaperNotesNavGraph(initialNoteId = initialNoteId, quickCapture = quickCapture)
             }
         }
+    }
+
+    companion object {
+        /** Action des Launcher-Shortcuts „Neuer Zettel" (siehe res/xml/shortcuts.xml). */
+        const val ACTION_NEW_NOTE = "com.papernotes.NEW_NOTE"
     }
 }

@@ -30,8 +30,12 @@ data class Note(
     val deletedAt: Long? = null,
     /** Geplante Erinnerungszeit (Epoch-Millis); null = keine Erinnerung. */
     val reminderAt: Long? = null,
+    /** Wiederholungs-Regel der Erinnerung (täglich/werktags/wöchentlich); NONE = einmalig. */
+    val reminderRule: ReminderRule = ReminderRule.NONE,
     /** Ablaufzeit (Epoch-Millis); null = beständig. Zur Zeit zerknüllt sich die Notiz selbst. */
     val expiresAt: Long? = null,
+    /** Zeitkapsel: Öffnungsdatum (Epoch-Millis). Bis dahin bleibt die versiegelte Notiz zu. */
+    val capsuleAt: Long? = null,
     /** Text auf der Rückseite des Blatts (für jeden Notiz-Typ; leer = unbeschriebene Rückseite). */
     val backText: String = "",
     /** Büroklammer-Stapel: Notizen mit gleichem clipId bilden ein Bündel. null = nicht geklammert. */
@@ -64,8 +68,15 @@ data class Note(
     /** true, wenn die Erinnerung zu [now] fällig ist (löst das Papier-Flattern aus). */
     fun isReminderDue(now: Long): Boolean = reminderAt?.let { it <= now } == true
 
+    /** true, wenn die Erinnerung sich wiederholt (Reiter trägt ein „↻"). */
+    val isRecurring: Boolean get() = reminderRule != ReminderRule.NONE
+
     /** true, wenn eine Ablaufzeit gesetzt ist (vergängliche Notiz). */
     val hasExpiry: Boolean get() = expiresAt != null
+
+    /** true, wenn die Notiz eine noch nicht fällige Zeitkapsel ist (verschlossen bis [capsuleAt]). */
+    fun isCapsuleLocked(now: Long): Boolean =
+        sealed && capsuleAt?.let { it > now } == true
 
     /** true, wenn die Notiz zu [now] abgelaufen ist (zerknüllt sich dann selbst). */
     fun isExpired(now: Long): Boolean = expiresAt?.let { it <= now } == true

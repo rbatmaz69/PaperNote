@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,6 +59,7 @@ fun MoodPickerSheet(
     done: Boolean,
     hasExpiry: Boolean,
     hasCountdown: Boolean,
+    hasCapsule: Boolean,
     hasPhoto: Boolean,
     paper: PaperStyle,
     onPick: (MoodCategory) -> Unit,
@@ -71,6 +73,7 @@ fun MoodPickerSheet(
     onCopy: () -> Unit,
     onClip: (() -> Unit)? = null,
     onToggleSeal: () -> Unit,
+    onSetCapsule: () -> Unit,
     onToggleInvisibleInk: () -> Unit,
     onToggleDone: () -> Unit,
     onEditTags: () -> Unit,
@@ -370,6 +373,31 @@ fun MoodPickerSheet(
                 )
                 Text(
                     text = if (sealed) "Siegel entfernen" else "Mit Wachs versiegeln",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                )
+            }
+
+            // Zeitkapsel: versiegeln bis zu einem Datum (öffnet sich dann von selbst)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .paperPress(RoundedCornerShape(14.dp)) { onSetCapsule() }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Schedule,
+                    contentDescription = null,
+                    tint = ink,
+                )
+                Text(
+                    text = if (hasCapsule) "Zeitkapsel ändern" else "Als Zeitkapsel versiegeln",
                     style = MaterialTheme.typography.labelLarge,
                     color = ink,
                 )

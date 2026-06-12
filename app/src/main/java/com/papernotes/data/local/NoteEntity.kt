@@ -6,6 +6,7 @@ import com.papernotes.domain.model.MoodCategory
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.PaperStyle
+import com.papernotes.domain.model.ReminderRule
 
 @Entity(tableName = "notes")
 data class NoteEntity(
@@ -21,6 +22,8 @@ data class NoteEntity(
     val invisibleInk: Boolean,
     val deletedAt: Long?,
     val reminderAt: Long?,
+    val reminderRule: String,
+    val capsuleAt: Long?,
     val expiresAt: Long?,
     val backText: String,
     val clipId: Long?,
@@ -48,6 +51,8 @@ fun NoteEntity.toDomain(): Note = Note(
     invisibleInk = invisibleInk,
     deletedAt = deletedAt,
     reminderAt = reminderAt,
+    reminderRule = ReminderRule.fromName(reminderRule),
+    capsuleAt = capsuleAt,
     expiresAt = expiresAt,
     backText = backText,
     clipId = clipId,
@@ -75,6 +80,8 @@ fun Note.toEntity(): NoteEntity = NoteEntity(
     invisibleInk = invisibleInk,
     deletedAt = deletedAt,
     reminderAt = reminderAt,
+    reminderRule = reminderRule.name,
+    capsuleAt = capsuleAt,
     expiresAt = expiresAt,
     backText = backText,
     clipId = clipId,

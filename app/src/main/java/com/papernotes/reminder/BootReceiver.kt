@@ -29,7 +29,12 @@ class BootReceiver : BroadcastReceiver() {
                 val now = System.currentTimeMillis()
                 repository.notesWithReminders().forEach { note ->
                     val at = note.reminderAt ?: return@forEach
-                    if (at > now) scheduler.schedule(note.id, note.title, at)
+                    if (at > now) scheduler.schedule(note.id, note.title, at, note.reminderRule)
+                }
+                // Zeitkapseln, die sich erst in der Zukunft öffnen, ebenfalls neu einplanen.
+                repository.notesWithCapsules().forEach { note ->
+                    val at = note.capsuleAt ?: return@forEach
+                    if (at > now) scheduler.scheduleCapsule(note.id, at)
                 }
             } finally {
                 pending.finish()

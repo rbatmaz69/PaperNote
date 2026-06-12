@@ -72,7 +72,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -82,6 +84,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -93,6 +96,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.papernotes.domain.model.Note
 import com.papernotes.domain.model.NoteType
 import com.papernotes.domain.model.cardSurface
+import com.papernotes.domain.model.earAccent
 import com.papernotes.domain.toShareText
 import com.papernotes.ui.components.AddFab
 import com.papernotes.ui.components.ArchiveDrawerSheet
@@ -107,6 +111,7 @@ import com.papernotes.ui.components.MoodPickerSheet
 import com.papernotes.ui.components.TagFilterRow
 import com.papernotes.ui.components.TagPickerSheet
 import com.papernotes.ui.components.ClipPickerSheet
+import com.papernotes.ui.components.CapsuleSheet
 import com.papernotes.ui.components.CountdownSheet
 import com.papernotes.ui.components.NoteCard
 import com.papernotes.ui.components.NoteLinkPickerSheet
@@ -124,7 +129,9 @@ import com.papernotes.ui.components.WaxSealBreakOverlay
 import com.papernotes.ui.components.WaxSealBreakRequest
 import com.papernotes.ui.theme.ThemeViewModel
 import com.papernotes.util.PhotoStore
+import com.papernotes.util.ShareCardRenderer
 import com.papernotes.util.rememberPaperHaptics
+import com.papernotes.util.shareImage
 import com.papernotes.util.sharePlainText
 import kotlin.math.sin
 
@@ -192,12 +199,14 @@ fun NotesScreen(
     var sealBreak by remember { mutableStateOf<WaxSealBreakRequest?>(null) }
     var shareRequest by remember { mutableStateOf<PaperPlaneRequest?>(null) }
     var shareText by remember { mutableStateOf("") }
+    var shareUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var moodTarget by remember { mutableStateOf<Note?>(null) }
     var tagTarget by remember { mutableStateOf<Note?>(null) }
     var linkTarget by remember { mutableStateOf<Note?>(null) }
     var clipTarget by remember { mutableStateOf<Note?>(null) }
     var expiryTarget by remember { mutableStateOf<Note?>(null) }
     var countdownTarget by remember { mutableStateOf<Note?>(null) }
+    var capsuleTarget by remember { mutableStateOf<Note?>(null) }
 
     // Foto-Picker (System-Auswahl, keine Berechtigung): wählt ein Bild für photoTarget.
     val scope = rememberCoroutineScope()
@@ -486,12 +495,25 @@ fun NotesScreen(
                                             now = now,
                                             onClick = {
                                                 if (arrangeMode) return@NoteCard
-                                                if (note.sealed) {
-                                                    cardBounds[note.id]?.let { b ->
-                                                        sealBreak = WaxSealBreakRequest(note.id, b, WaxRed)
-                                                    } ?: onOpenNote(note.id)
-                                                } else {
-                                                    onOpenNote(note.id)
+                                                when {
+                                                    // Zeitkapsel: lässt sich vor dem Termin nicht öffnen.
+                                                    note.isCapsuleLocked(now) -> {
+                                                        val day = java.text.SimpleDateFormat(
+                                                            "d. MMM yyyy",
+                                                            java.util.Locale.GERMAN,
+                                                        ).format(note.capsuleAt!!)
+                                                        android.widget.Toast.makeText(
+                                                            context,
+                                                            "Versiegelt bis $day",
+                                                            android.widget.Toast.LENGTH_SHORT,
+                                                        ).show()
+                                                    }
+                                                    note.sealed -> {
+                                                        cardBounds[note.id]?.let { b ->
+                                                            sealBreak = WaxSealBreakRequest(note.id, b, WaxRed)
+                                                        } ?: onOpenNote(note.id)
+                                                    }
+                                                    else -> onOpenNote(note.id)
                                                 }
                                             },
                                             onToggleDogEar = { if (!arrangeMode) viewModel.toggleDogEar(note) },
@@ -712,8 +734,10 @@ fun NotesScreen(
         PaperPlaneOverlay(
             request = req,
             onFinished = {
-                context.sharePlainText(shareText)
+                val uri = shareUri
+                if (uri != null) context.shareImage(uri, shareText) else context.sharePlainText(shareText)
                 shareRequest = null
+                shareUri = null
             },
         )
     }
@@ -737,6 +761,8 @@ fun NotesScreen(
     // Stimmungs-/Pin-/Lösch-Sheet
     moodTarget?.let { target ->
         val targetSurface = target.mood.cardSurface()
+        val targetAccent = target.mood.earAccent()
+        val inkColor = MaterialTheme.colorScheme.onBackground
         MoodPickerSheet(
             selected = target.mood,
             pinned = target.pinned,
@@ -746,6 +772,7 @@ fun NotesScreen(
             done = target.done,
             hasExpiry = target.hasExpiry,
             hasCountdown = target.hasCountdown,
+            hasCapsule = target.capsuleAt != null,
             hasPhoto = target.hasPhoto,
             paper = target.paper,
             onPick = { mood ->
@@ -763,6 +790,10 @@ fun NotesScreen(
             onToggleSeal = {
                 viewModel.toggleSeal(target)
                 moodTarget = null
+            },
+            onSetCapsule = {
+                moodTarget = null
+                capsuleTarget = target
             },
             onToggleInvisibleInk = {
                 viewModel.toggleInvisibleInk(target)
@@ -805,13 +836,23 @@ fun NotesScreen(
             },
             onShare = {
                 val bounds = cardBounds[target.id]
-                val text = target.toShareText()
                 moodTarget = null
-                if (bounds != null) {
-                    shareText = text
-                    shareRequest = PaperPlaneRequest(target.id, bounds, targetSurface)
-                } else {
-                    context.sharePlainText(text)
+                shareText = target.toShareText()
+                val surfaceArgb = targetSurface.toArgb()
+                val inkArgb = inkColor.toArgb()
+                val accentArgb = targetAccent.toArgb()
+                scope.launch {
+                    val uri = withContext(Dispatchers.IO) {
+                        ShareCardRenderer.render(context, target, surfaceArgb, inkArgb, accentArgb)
+                    }
+                    shareUri = uri
+                    if (bounds != null) {
+                        shareRequest = PaperPlaneRequest(target.id, bounds, targetSurface)
+                    } else if (uri != null) {
+                        context.shareImage(uri, shareText)
+                    } else {
+                        context.sharePlainText(shareText)
+                    }
                 }
             },
             onCopy = {
@@ -848,8 +889,9 @@ fun NotesScreen(
     reminderTarget?.let { target ->
         ReminderSheet(
             currentReminderAt = target.reminderAt,
-            onPick = { at ->
-                viewModel.setReminder(target, at)
+            currentRule = target.reminderRule,
+            onPick = { at, rule ->
+                viewModel.setReminder(target, at, rule)
                 ensureNotificationPermission()
                 reminderTarget = null
             },
@@ -890,6 +932,22 @@ fun NotesScreen(
                 countdownTarget = null
             },
             onDismiss = { countdownTarget = null },
+        )
+    }
+
+    // Zeitkapsel: Notiz bis zu einem Datum versiegeln
+    capsuleTarget?.let { target ->
+        CapsuleSheet(
+            currentCapsuleAt = target.capsuleAt,
+            onPick = { at ->
+                viewModel.setCapsule(target, at)
+                capsuleTarget = null
+            },
+            onClear = {
+                viewModel.setCapsule(target, null)
+                capsuleTarget = null
+            },
+            onDismiss = { capsuleTarget = null },
         )
     }
 

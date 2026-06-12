@@ -22,6 +22,10 @@ physikbasierte Animationen und haptische Gimmicks. Muji-Stil trifft Material Des
 - **Glücks-Teebeutel:** Schnur am oberen Rand nach unten ziehen → Gimmick des Tages + Tages-Statistik ([`TeabagPull`](app/src/main/java/com/papernotes/ui/components/TeabagPull.kt)).
 - **Mitternachtspapier:** warmer Dark Mode (tiefes Espresso-Papier, Creme-Tinte), folgt der Systemeinstellung.
 - **Clean Writing Mode:** System-Leisten blenden aus, Karte morpht ins Vollbild ([`EditorScreen`](app/src/main/java/com/papernotes/ui/editor/EditorScreen.kt)).
+- **Wiederkehrende Erinnerungen:** Erinnerungen täglich/werktags/wöchentlich; der Papier-Reiter trägt ein „↻" ([`ReminderRule`](app/src/main/java/com/papernotes/domain/model/ReminderRule.kt), [`ReminderReceiver`](app/src/main/java/com/papernotes/reminder/ReminderReceiver.kt)).
+- **Zeitkapsel:** Notiz mit Wachs versiegeln + Öffnungsdatum – sie bleibt verschlossen und öffnet sich am Tag X von selbst inkl. Benachrichtigung ([`CapsuleSheet`](app/src/main/java/com/papernotes/ui/components/CapsuleSheet.kt)).
+- **Als Papierkarte teilen:** Teilen rendert die Notiz als hübsches Karten-Bild (PNG) und schickt es per Papierflieger los ([`ShareCardRenderer`](app/src/main/java/com/papernotes/util/ShareCardRenderer.kt)).
+- **Einkleben & Schnellzettel:** geteilten Text/Link aus anderen Apps als neue Notiz übernehmen; Launcher-Shortcut „Neuer Zettel" für sofortiges Schreiben.
 - **Gesten:** Swipe-to-Archive, Pinch-to-Zoom (Spaltenzahl), schwebende Schatten ([`NotesScreen`](app/src/main/java/com/papernotes/ui/notes/NotesScreen.kt)).
 - **Haptik:** feine Ticks bei Interaktionen, Knister-Pattern beim Knüllen ([`Haptics.kt`](app/src/main/java/com/papernotes/util/Haptics.kt)).
 

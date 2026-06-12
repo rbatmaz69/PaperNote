@@ -103,6 +103,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE reminderAt IS NOT NULL AND deletedAt IS NULL")
     suspend fun notesWithReminders(): List<NoteEntity>
 
+    @Query("SELECT * FROM notes WHERE capsuleAt IS NOT NULL AND sealed = 1 AND deletedAt IS NULL")
+    suspend fun notesWithCapsules(): List<NoteEntity>
+
     @Query("UPDATE notes SET deletedAt = :now, expiresAt = NULL, clipId = NULL WHERE id = :id")
     suspend fun moveToTrash(id: Long, now: Long)
 

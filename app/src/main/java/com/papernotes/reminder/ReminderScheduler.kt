@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
+import com.papernotes.domain.model.ReminderRule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,17 +22,36 @@ class ReminderScheduler @Inject constructor(
     private val alarmManager =
         context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    fun schedule(noteId: Long, title: String, triggerAtMillis: Long) {
+    fun schedule(
+        noteId: Long,
+        title: String,
+        triggerAtMillis: Long,
+        rule: ReminderRule = ReminderRule.NONE,
+    ) {
         if (!canScheduleExact()) return
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             triggerAtMillis,
-            pendingIntent(noteId, title, mutableUpdate = true),
+            reminderIntent(noteId, title, rule, mutableUpdate = true),
         )
     }
 
     fun cancel(noteId: Long) {
-        alarmManager.cancel(pendingIntent(noteId, title = "", mutableUpdate = false))
+        alarmManager.cancel(reminderIntent(noteId, "", ReminderRule.NONE, mutableUpdate = false))
+    }
+
+    /** Plant das Selbst-Öffnen einer Zeitkapsel zum [triggerAtMillis]. */
+    fun scheduleCapsule(noteId: Long, triggerAtMillis: Long) {
+        if (!canScheduleExact()) return
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerAtMillis,
+            capsuleIntent(noteId, mutableUpdate = true),
+        )
+    }
+
+    fun cancelCapsule(noteId: Long) {
+        alarmManager.cancel(capsuleIntent(noteId, mutableUpdate = false))
     }
 
     /** Räumt eine bereits angezeigte Erinnerungs-Notification weg (Quittieren beim Öffnen). */
@@ -41,14 +61,34 @@ class ReminderScheduler @Inject constructor(
 
     private fun canScheduleExact(): Boolean = alarmManager.canScheduleExactAlarms()
 
-    private fun pendingIntent(noteId: Long, title: String, mutableUpdate: Boolean): PendingIntent {
+    private fun reminderIntent(
+        noteId: Long,
+        title: String,
+        rule: ReminderRule,
+        mutableUpdate: Boolean,
+    ): PendingIntent {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             action = ReminderReceiver.ACTION_REMIND
             putExtra(ReminderReceiver.EXTRA_NOTE_ID, noteId)
             putExtra(ReminderReceiver.EXTRA_NOTE_TITLE, title)
+            putExtra(ReminderReceiver.EXTRA_RULE, rule.name)
         }
+        return broadcast(noteId, intent, mutableUpdate)
+    }
+
+    // Eigene Action ⇒ unterscheidet sich für PendingIntent-Matching vom Erinnerungs-Alarm
+    // derselben Notiz (filterEquals berücksichtigt die Action), daher gleicher requestCode ok.
+    private fun capsuleIntent(noteId: Long, mutableUpdate: Boolean): PendingIntent {
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ReminderReceiver.ACTION_CAPSULE
+            putExtra(ReminderReceiver.EXTRA_NOTE_ID, noteId)
+        }
+        return broadcast(noteId, intent, mutableUpdate)
+    }
+
+    private fun broadcast(noteId: Long, intent: Intent, mutableUpdate: Boolean): PendingIntent {
         // FLAG_UPDATE_CURRENT überschreibt die Extras eines bestehenden Alarms; zum Canceln
-        // genügt ein zur requestCode passender Intent (Extras irrelevant fürs Matching).
+        // genügt ein zur requestCode + Action passender Intent (Extras irrelevant fürs Matching).
         val flags = PendingIntent.FLAG_IMMUTABLE or
             if (mutableUpdate) PendingIntent.FLAG_UPDATE_CURRENT else 0
         return PendingIntent.getBroadcast(context, noteId.toInt(), intent, flags)
