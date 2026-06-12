@@ -11,4 +11,5 @@
     <string name="mood_picker_title">Stimmung wählen</string>
     <string name="shortcut_new_note">Neuer Zettel</string>
     <string name="shortcut_new_note_long">Sofort einen neuen Zettel schreiben</string>
+    <string name="widget_description">Eine Haftnotiz auf dem Homescreen</string>
 </resources>

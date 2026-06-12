@@ -64,6 +64,10 @@ Muji-Ruhe trifft Material 3 — minimal, aber an allen richtigen Stellen verspie
   [`PaperPlaneOverlay`](app/src/main/java/com/papernotes/ui/components/PaperPlaneOverlay.kt)).
 - **Einkleben:** Text oder Link aus einer anderen App teilen → landet als frischer Zettel. 📎
 - **Schnellzettel:** App-Icon lang drücken → **„Neuer Zettel"** und sofort losschreiben.
+- **🪟 Haftnotiz-Widget:** eine ausgewählte Notiz als echter Papierzettel auf dem Homescreen —
+  **Farbe frei wählbar** (Stimmungsfarbe der Notiz oder ein festes Papier-Theme), Tippen öffnet
+  sie; aktualisiert sich nach dem Bearbeiten
+  ([`StickyNoteWidget`](app/src/main/java/com/papernotes/ui/widget/StickyNoteWidget.kt)).
 - **Foto-Polaroid:** ein Bild anheften — es klebt als kleines Polaroid auf der Karte.
 - **Sicherung:** alle Notizen (samt Fotos & Fäden) in eine ZIP exportieren und wieder
   einspielen — nicht-destruktiv ([`BackupManager`](app/src/main/java/com/papernotes/data/backup/BackupManager.kt)).

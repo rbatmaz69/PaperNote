@@ -20,13 +20,33 @@ import com.papernotes.ui.navigation.QuickCapture
 import com.papernotes.ui.notes.NotesViewModel
 import com.papernotes.ui.theme.PaperNotesTheme
 import com.papernotes.ui.theme.ThemeViewModel
+import com.papernotes.ui.widget.StickyNoteWidgets
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
     private val notesViewModel: NotesViewModel by viewModels()
+
+    // Notiz-Öffnen-Anfragen (Widget-/Notification-Tap). CONFLATED: nur die letzte zählt, und sie
+    // überlebt, bis die UI sie einsammelt – auch wenn die App schon läuft (onNewIntent).
+    private val openNoteRequests = Channel<Long>(Channel.CONFLATED)
+
+    /** Liest eine Notiz-id aus einem Tap-Intent (Widget/Notification) und reicht sie an die UI. */
+    private fun handleNoteIntent(intent: Intent?) {
+        intent?.getLongExtra(ReminderReceiver.EXTRA_NOTE_ID, 0L)
+            ?.takeIf { it != 0L }
+            ?.let { openNoteRequests.trySend(it) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNoteIntent(intent)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Splash halten, bis Theme (DataStore) UND Notizen (Room) geladen sind – kein Aufblitzen
@@ -37,10 +57,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        // Per Erinnerungs-Notification geöffnet? Dann direkt diese Notiz anzeigen.
-        val initialNoteId = intent
-            ?.getLongExtra(ReminderReceiver.EXTRA_NOTE_ID, 0L)
-            ?.takeIf { it != 0L }
+        // Per Erinnerungs-Notification oder Widget-Tap geöffnet? → diese Notiz anzeigen.
+        handleNoteIntent(intent)
 
         // „Einkleben": geteilter Text/Link aus einer anderen App → neuer Zettel.
         // Launcher-Shortcut „Neuer Zettel" → leerer Zettel.
@@ -72,9 +90,18 @@ class MainActivity : ComponentActivity() {
             }
 
             PaperNotesTheme(theme = theme, animateThemeChange = themeReady) {
-                PaperNotesNavGraph(initialNoteId = initialNoteId, quickCapture = quickCapture)
+                PaperNotesNavGraph(
+                    openNote = openNoteRequests.receiveAsFlow(),
+                    quickCapture = quickCapture,
+                )
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Nach (möglichen) Bearbeitungen die Haftnotiz-Widgets auffrischen.
+        StickyNoteWidgets.updateAll(this)
     }
 
     companion object {

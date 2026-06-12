@@ -18,6 +18,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.PaperNotes.Splash"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -45,6 +46,27 @@
                 <action android:name="com.papernotes.reminder.ACTION_REMIND" />
             </intent-filter>
         </receiver>
+
+        <!-- Haftnotiz-Widget -->
+        <receiver
+            android:name=".ui.widget.StickyNoteWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sticky_note_widget_info" />
+        </receiver>
+
+        <activity
+            android:name=".ui.widget.StickyNoteConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.PaperNotes">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
         <provider
             android:name="androidx.core.content.FileProvider"

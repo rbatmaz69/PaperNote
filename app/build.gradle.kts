@@ -88,6 +88,9 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
 
+    // Homescreen-Widget (Haftnotiz)
+    implementation(libs.androidx.glance.appwidget)
+
     // Wendet das eingebackene Baseline-Profil beim ersten Start an (AOT-Vorkompilierung
     // der heißen Compose-Pfade → schneller Kaltstart & flüssige erste Animationen).
     implementation(libs.androidx.profileinstaller)

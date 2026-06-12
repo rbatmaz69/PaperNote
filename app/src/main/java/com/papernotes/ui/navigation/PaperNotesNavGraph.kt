@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,8 @@ import com.papernotes.domain.model.NoteType
 import com.papernotes.ui.agenda.AgendaScreen
 import com.papernotes.ui.editor.EditorScreen
 import com.papernotes.ui.notes.NotesScreen
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** Sentinel: eine *neue* Notiz wird mit id 0 geöffnet; null = Übersicht. */
 private const val NEW_NOTE_ID = 0L
@@ -33,18 +36,29 @@ data class QuickCapture(val title: String, val body: String)
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun PaperNotesNavGraph(initialNoteId: Long? = null, quickCapture: QuickCapture? = null) {
+fun PaperNotesNavGraph(
+    openNote: Flow<Long> = emptyFlow(),
+    quickCapture: QuickCapture? = null,
+) {
     // null = Grid, sonst die zu bearbeitende Notiz-id (0 = neu, Typ via newNoteType).
-    // Per Notification-Tap geöffnet: direkt mit der betreffenden Notiz starten.
     // Per „Einkleben"/Shortcut: direkt einen neuen Zettel (id 0) öffnen.
     var selectedNoteId by rememberSaveable {
-        mutableStateOf(if (quickCapture != null) NEW_NOTE_ID else initialNoteId)
+        mutableStateOf<Long?>(if (quickCapture != null) NEW_NOTE_ID else null)
     }
     var newNoteType by rememberSaveable { mutableStateOf(NoteType.TEXT.name) }
     // Steigt bei jedem Öffnen → erzwingt frischen Editor-Zustand (siehe EditorViewModel.load).
     var editorSession by rememberSaveable { mutableIntStateOf(0) }
     // Im Grid: true = Schreibtisch-Agenda statt Notiz-Raster.
     var agendaVisible by rememberSaveable { mutableStateOf(false) }
+
+    // Widget-/Notification-Tap: betreffende Notiz öffnen – auch wenn die App schon läuft.
+    LaunchedEffect(Unit) {
+        openNote.collect { id ->
+            editorSession++
+            agendaVisible = false
+            selectedNoteId = id
+        }
+    }
 
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
         AnimatedContent(
