@@ -42,13 +42,17 @@ val LocalPaperTheme = compositionLocalOf { PaperTheme.DAYLIGHT }
 @Composable
 fun PaperNotesTheme(
     theme: PaperTheme = PaperTheme.AUTO,
+    // Solange das gespeicherte Theme noch nicht geladen ist (Splash läuft), NICHT animieren:
+    // sonst sieht man beim Start die Farben vom Default (AUTO) ins gespeicherte Theme über-
+    // blenden. Erst nach dem Laden animieren → spätere bewusste Theme-Wechsel bleiben weich.
+    animateThemeChange: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val resolved = theme.resolve(isSystemInDarkTheme())
     val target = if (resolved.dark) resolved.darkScheme() else resolved.lightScheme()
 
     // Theme-Wechsel weich überblenden: die Leitfarben animiert nachführen.
-    val scheme = target.animated()
+    val scheme = target.animated(animate = animateThemeChange)
 
     // Dezenter Papier-/Tinten-Ripple für Material-Buttons (z. B. IconButtons) statt
     // hartem Default – passt zum Papier-Druck der übrigen Flächen.
@@ -70,7 +74,9 @@ fun PaperNotesTheme(
 
 /** Führt die Leitfarben des Schemas animiert nach – ergibt eine weiche Theme-Überblendung. */
 @Composable
-private fun ColorScheme.animated(): ColorScheme {
+private fun ColorScheme.animated(animate: Boolean): ColorScheme {
+    // Ohne Animation: Farben sofort übernehmen (kein animateColorAsState ⇒ kein Einblenden).
+    if (!animate) return this
     val spec = tween<androidx.compose.ui.graphics.Color>(durationMillis = 450)
     return copy(
         primary = animateColorAsState(primary, spec, label = "primary").value,

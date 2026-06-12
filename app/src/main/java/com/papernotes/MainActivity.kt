@@ -43,6 +43,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val theme by themeViewModel.theme.collectAsStateWithLifecycle()
+            // Erst animieren, wenn das gespeicherte Theme geladen ist – sonst blenden beim
+            // Start die Farben vom AUTO-Default ins gespeicherte Theme über (sichtbar, weil
+            // der Splash genau dann verschwindet).
+            val themeReady by themeViewModel.ready.collectAsStateWithLifecycle()
             val isDark = theme.resolve(isSystemInDarkTheme()).dark
 
             // Statusleisten-Icons passend zum Papier-Theme (helle Icons auf dunklem Papier).
@@ -53,7 +57,7 @@ class MainActivity : ComponentActivity() {
                 controller.isAppearanceLightNavigationBars = !isDark
             }
 
-            PaperNotesTheme(theme = theme) {
+            PaperNotesTheme(theme = theme, animateThemeChange = themeReady) {
                 PaperNotesNavGraph(initialNoteId = initialNoteId)
             }
         }
