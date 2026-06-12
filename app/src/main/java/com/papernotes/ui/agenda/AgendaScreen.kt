@@ -1,5 +1,6 @@
 package com.papernotes.ui.agenda
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,9 @@ fun AgendaScreen(
 ) {
     val sections by viewModel.sections.collectAsStateWithLifecycle()
     val ink = MaterialTheme.colorScheme.onBackground
+
+    // System-Zurück (Geste/Button) führt zurück zur Startseite statt aus der App heraus.
+    BackHandler { onBack() }
     // Statusleisten-/Notch-Höhe oben freihalten, damit Zurück-Pfeil und Titel nicht unter
     // die Systemleiste rutschen (wie in NotesScreen/EditorScreen).
     val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
