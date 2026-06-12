@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,9 +51,12 @@ fun AgendaScreen(
 ) {
     val sections by viewModel.sections.collectAsStateWithLifecycle()
     val ink = MaterialTheme.colorScheme.onBackground
+    // Statusleisten-/Notch-Höhe oben freihalten, damit Zurück-Pfeil und Titel nicht unter
+    // die Systemleiste rutschen (wie in NotesScreen/EditorScreen).
+    val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
 
     PaperBackground(dotGrid = true) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(top = topInset)) {
             // Kopfzeile: Zurück + Titel.
             Row(
                 modifier = Modifier
